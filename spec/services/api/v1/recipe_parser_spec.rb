@@ -9,10 +9,10 @@ RSpec.describe Api::V1::RecipeParser do
     }.to_json
   end
 
-  describe '.call' do
+  describe '.perform' do
     context 'when JSON is valid' do
       it 'returns parsed recipe attributes' do
-        result = described_class.call(valid_json)
+        result = described_class.perform(valid_json)
         expect(result).to include(
           title: "Simple Tomato Pasta",
           ingredients: "400g pasta\n4 tomatoes\n3 tbsp olive oil",
@@ -26,7 +26,7 @@ RSpec.describe Api::V1::RecipeParser do
 
       it 'raises ParsingError' do
         expect {
-          described_class.call(invalid_json)
+          described_class.perform(invalid_json)
         }.to raise_error(Api::V1::RecipeParser::ParsingError, /Invalid recipe format/)
       end
     end

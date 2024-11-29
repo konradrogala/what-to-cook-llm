@@ -1,17 +1,15 @@
 module Api
   module V1
     class RecipeCreator
-      class CreationError < StandardError; end
+      include Performable
 
-      def self.call(recipe_attributes)
-        new(recipe_attributes).call
-      end
+      class CreationError < StandardError; end
 
       def initialize(recipe_attributes)
         @recipe_attributes = recipe_attributes
       end
 
-      def call
+      def perform
         recipe = Recipe.new(recipe_attributes)
 
         if recipe.save

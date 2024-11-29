@@ -9,28 +9,36 @@ RSpec.describe Api::V1::RecipeCreator do
     }
   end
 
-  describe '.call' do
+  describe '.perform' do
     context 'when attributes are valid' do
       it 'creates a new recipe' do
         expect {
-          described_class.call(valid_attributes)
+          described_class.perform(valid_attributes)
         }.to change(Recipe, :count).by(1)
       end
 
       it 'returns the created recipe' do
-        recipe = described_class.call(valid_attributes)
+        recipe = described_class.perform(valid_attributes)
         expect(recipe).to be_a(Recipe)
+        expect(recipe).to be_persisted
         expect(recipe.title).to eq("Simple Tomato Pasta")
       end
     end
 
     context 'when attributes are invalid' do
-      let(:invalid_attributes) { { title: nil } }
+      let(:invalid_attributes) { { title: "" } }
 
       it 'raises CreationError' do
         expect {
-          described_class.call(invalid_attributes)
+          described_class.perform(invalid_attributes)
         }.to raise_error(Api::V1::RecipeCreator::CreationError)
+      end
+
+      it 'does not create a recipe' do
+        expect {
+          described_class.perform(invalid_attributes)
+        }.to raise_error(Api::V1::RecipeCreator::CreationError)
+        expect(Recipe.count).to eq(0)
       end
     end
   end

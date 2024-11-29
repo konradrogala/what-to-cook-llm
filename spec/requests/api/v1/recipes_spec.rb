@@ -20,9 +20,9 @@ RSpec.describe "Api::V1::Recipes", type: :request do
     end
 
     before do
-      allow(Api::V1::RecipeGenerator).to receive(:call).with(valid_ingredients).and_return(json_content)
-      allow(Api::V1::RecipeParser).to receive(:call).with(json_content).and_return(recipe_attributes)
-      allow(Api::V1::RecipeCreator).to receive(:call).with(recipe_attributes).and_return(
+      allow(Api::V1::RecipeGenerator).to receive(:perform).with(valid_ingredients).and_return(json_content)
+      allow(Api::V1::RecipeParser).to receive(:perform).with(json_content).and_return(recipe_attributes)
+      allow(Api::V1::RecipeCreator).to receive(:perform).with(recipe_attributes).and_return(
         Recipe.new(recipe_attributes.merge(id: 1))
       )
     end
@@ -48,7 +48,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
 
     context "when recipe generation fails" do
       before do
-        allow(Api::V1::RecipeGenerator).to receive(:call).and_raise(
+        allow(Api::V1::RecipeGenerator).to receive(:perform).and_raise(
           Api::V1::RecipeGenerator::GenerationError.new("API Error")
         )
       end
@@ -63,7 +63,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
 
     context "when recipe parsing fails" do
       before do
-        allow(Api::V1::RecipeParser).to receive(:call).and_raise(
+        allow(Api::V1::RecipeParser).to receive(:perform).and_raise(
           Api::V1::RecipeParser::ParsingError.new("Invalid format")
         )
       end
@@ -78,7 +78,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
 
     context "when recipe creation fails" do
       before do
-        allow(Api::V1::RecipeCreator).to receive(:call).and_raise(
+        allow(Api::V1::RecipeCreator).to receive(:perform).and_raise(
           Api::V1::RecipeCreator::CreationError.new("Invalid title")
         )
       end

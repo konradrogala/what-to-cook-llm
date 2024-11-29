@@ -1,17 +1,15 @@
 module Api
   module V1
     class RecipeGenerator
-      class GenerationError < StandardError; end
+      include Performable
 
-      def self.call(ingredients)
-        new(ingredients).call
-      end
+      class GenerationError < StandardError; end
 
       def initialize(ingredients)
         @ingredients = ingredients
       end
 
-      def call
+      def perform
         client = OpenAI::Client.new
         Rails.logger.info "OpenAI client initialized"
 

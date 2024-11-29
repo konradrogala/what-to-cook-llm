@@ -8,9 +8,9 @@ class Api::V1::RecipesController < ApplicationController
     end
 
     begin
-      json_content = Api::V1::RecipeGenerator.call(ingredients)
-      recipe_attributes = Api::V1::RecipeParser.call(json_content)
-      recipe = Api::V1::RecipeCreator.call(recipe_attributes)
+      json_content = Api::V1::RecipeGenerator.perform(ingredients)
+      recipe_attributes = Api::V1::RecipeParser.perform(json_content)
+      recipe = Api::V1::RecipeCreator.perform(recipe_attributes)
 
       render json: recipe, status: :created
     rescue Api::V1::RecipeGenerator::GenerationError => e

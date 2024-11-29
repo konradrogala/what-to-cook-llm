@@ -21,14 +21,14 @@ RSpec.describe Api::V1::RecipeGenerator do
     allow(OpenAI::Client).to receive(:new).and_return(openai_client)
   end
 
-  describe '.call' do
+  describe '.perform' do
     context 'when API call is successful' do
       before do
         allow(openai_client).to receive(:chat).and_return(api_response)
       end
 
       it 'returns JSON content from API response' do
-        result = described_class.call(ingredients)
+        result = described_class.perform(ingredients)
         expect(JSON.parse(result)).to include(
           "title" => "Simple Tomato Pasta"
         )
@@ -42,7 +42,7 @@ RSpec.describe Api::V1::RecipeGenerator do
 
       it 'raises GenerationError' do
         expect {
-          described_class.call(ingredients)
+          described_class.perform(ingredients)
         }.to raise_error(Api::V1::RecipeGenerator::GenerationError, /Failed to generate recipe/)
       end
     end

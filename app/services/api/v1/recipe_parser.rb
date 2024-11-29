@@ -1,17 +1,15 @@
 module Api
   module V1
     class RecipeParser
-      class ParsingError < StandardError; end
+      include Performable
 
-      def self.call(json_content)
-        new(json_content).call
-      end
+      class ParsingError < StandardError; end
 
       def initialize(json_content)
         @json_content = json_content
       end
 
-      def call
+      def perform
         recipe_data = JSON.parse(json_content)
         Rails.logger.info "Successfully parsed recipe data"
         Rails.logger.debug "Recipe data: #{recipe_data.inspect}"
