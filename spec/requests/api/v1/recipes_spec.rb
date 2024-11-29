@@ -3,40 +3,31 @@ require 'rails_helper'
 RSpec.describe "Api::V1::Recipes", type: :request do
   describe "POST /api/v1/recipes" do
     let(:valid_ingredients) { "tomatoes, pasta, olive oil" }
-    let(:api_response) do
+    let(:json_content) do
       {
-        "choices" => [{
-          "message" => {
-            "content" => {
-              "title" => "Simple Tomato Pasta",
-              "ingredients" => ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
-              "instructions" => ["Boil pasta", "Prepare sauce", "Mix together"]
-            }.to_json
-          }
-        }]
+        "title" => "Simple Tomato Pasta",
+        "ingredients" => ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
+        "instructions" => ["Boil pasta", "Prepare sauce", "Mix together"]
+      }.to_json
+    end
+
+    let(:recipe_attributes) do
+      {
+        title: "Simple Tomato Pasta",
+        ingredients: "400g pasta\n4 tomatoes\n3 tbsp olive oil",
+        instructions: "Boil pasta\nPrepare sauce\nMix together"
       }
     end
 
-    let(:openai_client) { instance_double(OpenAI::Client) }
-
     before do
-      allow(OpenAI::Client).to receive(:new).and_return(openai_client)
-      allow(openai_client).to receive(:chat).with(
-        parameters: {
-          model: "gpt-3.5-turbo-1106",
-          messages: [{ role: "user", content: /Generate a recipe using these ingredients:.*/ }],
-          response_format: { type: "json_object" }
-        }
-      ).and_return(api_response)
+      allow(Api::V1::RecipeGenerator).to receive(:call).with(valid_ingredients).and_return(json_content)
+      allow(Api::V1::RecipeParser).to receive(:call).with(json_content).and_return(recipe_attributes)
+      allow(Api::V1::RecipeCreator).to receive(:call).with(recipe_attributes).and_return(
+        Recipe.new(recipe_attributes.merge(id: 1))
+      )
     end
 
     context "when the request is successful" do
-      it "creates a new recipe" do
-        expect {
-          post "/api/v1/recipes", params: { ingredients: valid_ingredients }
-        }.to change(Recipe, :count).by(1)
-      end
-
       it "returns the created recipe" do
         post "/api/v1/recipes", params: { ingredients: valid_ingredients }
         
@@ -46,68 +37,57 @@ RSpec.describe "Api::V1::Recipes", type: :request do
       end
     end
 
-    context "when the OpenAI API fails" do
-      before do
-        allow(openai_client).to receive(:chat).and_raise(OpenAI::Error.new("API Error"))
-      end
-
-      it "returns an error response" do
-        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
-        
-        expect(response).to have_http_status(:service_unavailable)
-        json_response = JSON.parse(response.body)
-        expect(json_response["error"]).to eq("Failed to generate recipe")
-      end
-    end
-
-    context "when the API response is not valid JSON" do
-      let(:invalid_api_response) do
-        {
-          "choices" => [{
-            "message" => {
-              "content" => "Invalid JSON"
-            }
-          }]
-        }
-      end
-
-      before do
-        allow(openai_client).to receive(:chat).and_return(invalid_api_response)
-      end
-
-      it "returns an error response" do
-        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
+    context "when ingredients are empty" do
+      it "returns an error" do
+        post "/api/v1/recipes", params: { ingredients: "" }
         
         expect(response).to have_http_status(:unprocessable_entity)
-        json_response = JSON.parse(response.body)
-        expect(json_response["error"]).to eq("Invalid response format from AI")
+        expect(JSON.parse(response.body)).to include("error" => "Ingredients cannot be empty")
       end
     end
 
-    context "when the recipe fails to save" do
+    context "when recipe generation fails" do
       before do
-        allow_any_instance_of(Recipe).to receive(:save).and_return(false)
-        allow_any_instance_of(Recipe).to receive(:errors).and_return(
-          double(full_messages: ["Title can't be blank"])
+        allow(Api::V1::RecipeGenerator).to receive(:call).and_raise(
+          Api::V1::RecipeGenerator::GenerationError.new("API Error")
         )
       end
 
-      it "returns an error response" do
+      it "returns an error" do
         post "/api/v1/recipes", params: { ingredients: valid_ingredients }
         
-        expect(response).to have_http_status(:unprocessable_entity)
-        json_response = JSON.parse(response.body)
-        expect(json_response).to have_key("title")
+        expect(response).to have_http_status(:service_unavailable)
+        expect(JSON.parse(response.body)).to include("error" => "API Error")
       end
     end
 
-    context "when no ingredients are provided" do
-      it "returns an error response" do
-        post "/api/v1/recipes", params: { ingredients: nil }
+    context "when recipe parsing fails" do
+      before do
+        allow(Api::V1::RecipeParser).to receive(:call).and_raise(
+          Api::V1::RecipeParser::ParsingError.new("Invalid format")
+        )
+      end
+
+      it "returns an error" do
+        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
         
         expect(response).to have_http_status(:unprocessable_entity)
-        json_response = JSON.parse(response.body)
-        expect(json_response["error"]).to eq("Ingredients cannot be empty")
+        expect(JSON.parse(response.body)).to include("error" => "Invalid format")
+      end
+    end
+
+    context "when recipe creation fails" do
+      before do
+        allow(Api::V1::RecipeCreator).to receive(:call).and_raise(
+          Api::V1::RecipeCreator::CreationError.new("Invalid title")
+        )
+      end
+
+      it "returns an error" do
+        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
+        
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)).to include("error" => "Invalid title")
       end
     end
   end

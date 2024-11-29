@@ -304,6 +304,8 @@ GEM
       faraday-multipart (>= 1)
     ruby-progressbar (1.13.0)
     securerandom (0.3.2)
+    shoulda-matchers (6.4.0)
+      activesupport (>= 5.2.0)
     solid_cable (3.0.2)
       actioncable (>= 7.2)
       activejob (>= 7.2)
@@ -372,6 +374,7 @@ DEPENDENCIES
   rspec-rails
   rubocop-rails-omakase
   ruby-openai
+  shoulda-matchers
   solid_cable
   solid_cache
   solid_queue
