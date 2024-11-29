@@ -1,0 +1,2 @@
+development:
+  ANTHROPIC_API_KEY: <%= Rails.application.credentials.anthropic.api_key %>
