@@ -1,5 +1,7 @@
 class Api::V1::RecipesController < ApplicationController
   def create
+    Rails.logger.info "Current request count in controller: #{session[:api_requests_count]}"
+
     ingredients = params[:ingredients]
 
     if ingredients.blank? || ingredients.empty?
@@ -12,7 +14,10 @@ class Api::V1::RecipesController < ApplicationController
       recipe_attributes = Api::V1::RecipeParser.perform(json_content)
       recipe = Api::V1::RecipeCreator.perform(recipe_attributes)
 
-      render json: recipe, status: :created
+      render json: {
+        recipe: recipe,
+        remaining_requests: ApiRequestLimiter::MAX_REQUESTS - session[:api_requests_count].to_i
+      }, status: :created
     rescue Api::V1::RecipeGenerator::GenerationError => e
       render json: { error: e.message }, status: :service_unavailable
     rescue Api::V1::RecipeParser::ParsingError => e

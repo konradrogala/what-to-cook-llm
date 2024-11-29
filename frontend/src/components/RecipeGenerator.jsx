@@ -7,7 +7,9 @@ import {
   Text, 
   Stack,
   Progress,
-  Center
+  Center,
+  Badge,
+  Group
 } from '@mantine/core';
 import axios from 'axios';
 
@@ -18,6 +20,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Ensure cookies are sent with requests
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
 const LoadingState = ({ step }) => {
@@ -40,12 +45,14 @@ const LoadingState = ({ step }) => {
           value={currentStep.value} 
           size="xl" 
           radius="xl" 
-          animate
+          striped
         />
       </Stack>
     </Paper>
   );
 };
+
+const MAX_REQUESTS = 5;
 
 const RecipeGenerator = () => {
   const [ingredients, setIngredients] = useState('');
@@ -53,9 +60,15 @@ const RecipeGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState(null);
+  const [remainingRequests, setRemainingRequests] = useState(MAX_REQUESTS);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (remainingRequests <= 0) {
+      setError('You have reached the maximum number of requests for this session.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setRecipe(null);
@@ -68,9 +81,15 @@ const RecipeGenerator = () => {
         ingredients,
       });
       setLoadingStep(2); // Final step
-      setRecipe(response.data);
+      setRecipe(response.data.recipe);
+      setRemainingRequests(response.data.remaining_requests);
     } catch (err) {
-      setError(err.response?.data?.error || 'Something went wrong');
+      if (err.response?.status === 429) {
+        setError('You have reached the maximum number of requests for this session.');
+        setRemainingRequests(0);
+      } else {
+        setError(err.response?.data?.error || 'Something went wrong');
+      }
     } finally {
       setLoading(false);
       setLoadingStep(0);
@@ -93,14 +112,20 @@ const RecipeGenerator = () => {
             required
             mb="md"
           />
-          <Button 
-            type="submit" 
-            fullWidth 
-            loading={loading}
-            disabled={loading}
-          >
-            {loading ? 'Generating Recipe...' : 'Generate Recipe'}
-          </Button>
+          <Stack spacing="sm">
+            <Button 
+              type="submit" 
+              fullWidth 
+              loading={loading}
+              disabled={loading || remainingRequests <= 0}
+            >
+              {loading ? 'Generating Recipe...' : 'Generate Recipe'}
+            </Button>
+            <Group position="center" spacing="xs">
+              <Text size="sm" color="dimmed">Remaining requests:</Text>
+              <Badge color={remainingRequests > 0 ? 'blue' : 'red'}>{remainingRequests}</Badge>
+            </Group>
+          </Stack>
         </form>
       </Paper>
 

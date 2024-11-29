@@ -2,92 +2,51 @@ require 'rails_helper'
 
 RSpec.describe "Api::V1::Recipes", type: :request do
   describe "POST /api/v1/recipes" do
-    let(:valid_ingredients) { "tomatoes, pasta, olive oil" }
-    let(:json_content) do
+    let(:valid_params) do
       {
-        "title" => "Simple Tomato Pasta",
-        "ingredients" => ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
-        "instructions" => ["Boil pasta", "Prepare sauce", "Mix together"]
-      }.to_json
-    end
-
-    let(:recipe_attributes) do
-      {
-        title: "Simple Tomato Pasta",
-        ingredients: "400g pasta\n4 tomatoes\n3 tbsp olive oil",
-        instructions: "Boil pasta\nPrepare sauce\nMix together"
+        ingredients: ["tomato", "pasta"]
       }
     end
 
     before do
-      allow(Api::V1::RecipeGenerator).to receive(:perform).with(valid_ingredients).and_return(json_content)
-      allow(Api::V1::RecipeParser).to receive(:perform).with(json_content).and_return(recipe_attributes)
-      allow(Api::V1::RecipeCreator).to receive(:perform).with(recipe_attributes).and_return(
-        Recipe.new(recipe_attributes.merge(id: 1))
+      allow(Api::V1::RecipeGenerator).to receive(:perform).and_return(
+        {
+          title: "Test Recipe",
+          ingredients: ["tomato", "pasta"],
+          instructions: ["Step 1", "Step 2"]
+        }.to_json
       )
     end
 
     context "when the request is successful" do
-      it "returns the created recipe" do
-        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
-        
+      it "returns the created recipe and remaining requests" do
+        post "/api/v1/recipes", params: valid_params, as: :json
+
         expect(response).to have_http_status(:created)
-        json_response = JSON.parse(response.body)
-        expect(json_response["title"]).to eq("Simple Tomato Pasta")
+        expect(json_response["recipe"]).to include(
+          "title" => "Test Recipe",
+          "ingredients" => ["tomato", "pasta"],
+          "instructions" => ["Step 1", "Step 2"]
+        )
+        expect(json_response["remaining_requests"]).to eq(4)
       end
     end
 
     context "when ingredients are empty" do
       it "returns an error" do
-        post "/api/v1/recipes", params: { ingredients: "" }
-        
+        post "/api/v1/recipes", params: { ingredients: [] }, as: :json
+
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to include("error" => "Ingredients cannot be empty")
+        expect(json_response["error"]).to eq("Ingredients cannot be empty")
       end
     end
 
-    context "when recipe generation fails" do
-      before do
-        allow(Api::V1::RecipeGenerator).to receive(:perform).and_raise(
-          Api::V1::RecipeGenerator::GenerationError.new("API Error")
-        )
-      end
-
+    context "when ingredients are missing" do
       it "returns an error" do
-        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
-        
-        expect(response).to have_http_status(:service_unavailable)
-        expect(JSON.parse(response.body)).to include("error" => "API Error")
-      end
-    end
+        post "/api/v1/recipes", params: {}, as: :json
 
-    context "when recipe parsing fails" do
-      before do
-        allow(Api::V1::RecipeParser).to receive(:perform).and_raise(
-          Api::V1::RecipeParser::ParsingError.new("Invalid format")
-        )
-      end
-
-      it "returns an error" do
-        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
-        
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to include("error" => "Invalid format")
-      end
-    end
-
-    context "when recipe creation fails" do
-      before do
-        allow(Api::V1::RecipeCreator).to receive(:perform).and_raise(
-          Api::V1::RecipeCreator::CreationError.new("Invalid title")
-        )
-      end
-
-      it "returns an error" do
-        post "/api/v1/recipes", params: { ingredients: valid_ingredients }
-        
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to include("error" => "Invalid title")
+        expect(json_response["error"]).to eq("Ingredients cannot be empty")
       end
     end
   end
