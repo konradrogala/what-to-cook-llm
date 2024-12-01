@@ -39,12 +39,6 @@ class ApiRequestLimiter
     # Call the app
     status, headers, response = @app.call(env)
 
-    # Decrement counter if request failed
-    if status != 201
-      session[:api_requests_count] -= 1
-      Rails.logger.info "[MIDDLEWARE] Request failed, decremented count: #{session[:api_requests_count]}"
-    end
-
     Rails.logger.info "[MIDDLEWARE] Response status: #{status}"
     Rails.logger.info "[MIDDLEWARE] Final count: #{session[:api_requests_count]}"
 

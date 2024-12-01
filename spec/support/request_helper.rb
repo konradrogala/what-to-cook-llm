@@ -9,9 +9,11 @@ module RequestHelper
       @request.session[:api_requests_count] = 0
     else
       # For request tests
-      allow_any_instance_of(ActionDispatch::Request).to receive(:session).and_return(
-        ActionController::TestSession.new(api_requests_count: 0)
-      )
+      session = ActionController::TestSession.new
+      session[:api_requests_count] = 0
+      allow_any_instance_of(ActionDispatch::Request).to receive(:session) do
+        session
+      end
     end
   end
 end

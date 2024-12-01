@@ -38,7 +38,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
     context "when tracking request counts" do
       before { setup_api_session }
 
-      it "properly decrements remaining requests after successful request" do
+      it "increments request count for successful request" do
         # First request
         post "/api/v1/recipes", params: valid_params, as: :json
         expect(response).to have_http_status(:created)
@@ -50,14 +50,15 @@ RSpec.describe "Api::V1::Recipes", type: :request do
         expect(json_response["remaining_requests"]).to eq(5)
       end
 
-      it "does not decrement remaining requests for failed requests" do
+      it "increments request count for failed requests" do
         # Failed request
         post "/api/v1/recipes", params: { ingredients: [] }, as: :json
         expect(response).to have_http_status(:unprocessable_entity)
+        expect(json_response["remaining_requests"]).to eq(5)
 
-        # Successful request after failure
-        post "/api/v1/recipes", params: valid_params, as: :json
-        expect(response).to have_http_status(:created)
+        # Another failed request
+        post "/api/v1/recipes", params: { ingredients: [] }, as: :json
+        expect(response).to have_http_status(:unprocessable_entity)
         expect(json_response["remaining_requests"]).to eq(5)
       end
 
