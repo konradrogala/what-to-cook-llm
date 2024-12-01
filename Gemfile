@@ -11,6 +11,7 @@ gem "puma", ">= 5.0"
 gem "rack-cors"
 gem "jbuilder"
 gem "figaro"
+gem "active_model_serializers"
 
 # LLM integration
 gem "ruby-openai"
