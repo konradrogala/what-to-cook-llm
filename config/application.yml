@@ -1,2 +1,2 @@
-development:
-  ANTHROPIC_API_KEY: <%= Rails.application.credentials.anthropic.api_key %>
+test:
+  OPENAI_API_KEY: <%= ENV['OPENAI_API_KEY'] %>

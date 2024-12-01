@@ -7,7 +7,8 @@ A web application that generates recipes based on available ingredients using AI
 - Ruby 3.x
 - Node.js 16+
 - PostgreSQL
-- Anthropic API Key
+- OpenAI API Key
+- Docker (for production deployment)
 
 ## Setup
 
@@ -23,10 +24,12 @@ A web application that generates recipes based on available ingredients using AI
    ```bash
    rails db:create db:migrate
    ```
-5. Set up your environment variables:
+5. Set up your environment variables by copying the example file:
    ```bash
-   export ANTHROPIC_API_KEY=your_api_key_here
+   cp env.example .env
    ```
+   Then edit `.env` and add your OpenAI API key and organization ID (optional)
+
 6. Start the Rails server:
    ```bash
    rails s -p 3001
@@ -63,13 +66,28 @@ Run the test suite:
 rspec
 ```
 
+## Production Deployment
+
+The application is configured for deployment using Docker and Kamal. To build and run the Docker container:
+
+```bash
+# Build the image
+docker build -t what_to_cook_llm .
+
+# Run the container
+docker run -d -p 80:80 -e RAILS_MASTER_KEY=<your-master-key> --name what_to_cook_llm what_to_cook_llm
+```
+
+For production deployment using Kamal, refer to the deployment configuration in the `.kamal` directory.
+
 ## Technologies Used
 
 - Backend:
   - Ruby on Rails (API mode)
   - PostgreSQL
-  - Anthropic Claude API
+  - OpenAI API
   - RSpec for testing
+  - Docker & Kamal for deployment
 
 - Frontend:
   - React

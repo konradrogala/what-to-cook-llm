@@ -15,16 +15,30 @@ RSpec.describe Recipe, type: :model do
       expect(recipe.title).not_to be_empty
     end
 
-    it 'has ingredients' do
-      expect(recipe.ingredients).to be_an(Array)
-      expect(recipe.ingredients).not_to be_empty
-      expect(recipe.ingredients).to all(be_a(String))
+    it 'has ingredients as array' do
+      expect(recipe.ingredients_array).to be_an(Array)
+      expect(recipe.ingredients_array).not_to be_empty
+      expect(recipe.ingredients_array).to all(be_a(String))
     end
 
-    it 'has instructions' do
-      expect(recipe.instructions).to be_an(Array)
-      expect(recipe.instructions).not_to be_empty
-      expect(recipe.instructions).to all(be_a(String))
+    it 'has instructions as array' do
+      expect(recipe.instructions_array).to be_an(Array)
+      expect(recipe.instructions_array).not_to be_empty
+      expect(recipe.instructions_array).to all(be_a(String))
+    end
+
+    it 'serializes ingredients as array in JSON' do
+      json = recipe.as_json
+      expect(json['ingredients']).to be_an(Array)
+      expect(json['ingredients']).not_to be_empty
+      expect(json['ingredients']).to all(be_a(String))
+    end
+
+    it 'serializes instructions as array in JSON' do
+      json = recipe.as_json
+      expect(json['instructions']).to be_an(Array)
+      expect(json['instructions']).not_to be_empty
+      expect(json['instructions']).to all(be_a(String))
     end
   end
 
