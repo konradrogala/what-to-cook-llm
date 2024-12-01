@@ -6,8 +6,8 @@ RSpec.describe Api::V1::RecipeParser do
       let(:valid_json) do
         {
           title: "Simple Tomato Pasta",
-          ingredients: ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
-          instructions: ["Boil pasta", "Prepare sauce", "Mix together"]
+          ingredients: [ "400g pasta", "4 tomatoes", "3 tbsp olive oil" ],
+          instructions: [ "Boil pasta", "Prepare sauce", "Mix together" ]
         }.to_json
       end
 
@@ -15,8 +15,8 @@ RSpec.describe Api::V1::RecipeParser do
         result = described_class.perform(valid_json)
         expect(result).to include(
           title: "Simple Tomato Pasta",
-          ingredients: ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
-          instructions: ["Boil pasta", "Prepare sauce", "Mix together"]
+          ingredients: [ "400g pasta", "4 tomatoes", "3 tbsp olive oil" ],
+          instructions: [ "Boil pasta", "Prepare sauce", "Mix together" ]
         )
       end
     end

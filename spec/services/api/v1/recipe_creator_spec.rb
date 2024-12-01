@@ -4,8 +4,8 @@ RSpec.describe Api::V1::RecipeCreator do
   let(:valid_attributes) do
     {
       title: "Simple Tomato Pasta",
-      ingredients: ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
-      instructions: ["Boil pasta", "Prepare sauce", "Mix together"]
+      ingredients: [ "400g pasta", "4 tomatoes", "3 tbsp olive oil" ],
+      instructions: [ "Boil pasta", "Prepare sauce", "Mix together" ]
     }
   end
 
@@ -23,8 +23,8 @@ RSpec.describe Api::V1::RecipeCreator do
         expect(recipe).to be_a(Recipe)
         expect(recipe).to be_persisted
         expect(recipe.title).to eq("Simple Tomato Pasta")
-        expect(recipe.ingredients_array).to eq(["400g pasta", "4 tomatoes", "3 tbsp olive oil"])
-        expect(recipe.instructions_array).to eq(["Boil pasta", "Prepare sauce", "Mix together"])
+        expect(recipe.ingredients_array).to eq([ "400g pasta", "4 tomatoes", "3 tbsp olive oil" ])
+        expect(recipe.instructions_array).to eq([ "Boil pasta", "Prepare sauce", "Mix together" ])
       end
 
       it "serializes recipe correctly" do
@@ -32,8 +32,8 @@ RSpec.describe Api::V1::RecipeCreator do
         json = recipe.as_json
 
         expect(json["title"]).to eq("Simple Tomato Pasta")
-        expect(json["ingredients"]).to eq(["400g pasta", "4 tomatoes", "3 tbsp olive oil"])
-        expect(json["instructions"]).to eq(["Boil pasta", "Prepare sauce", "Mix together"])
+        expect(json["ingredients"]).to eq([ "400g pasta", "4 tomatoes", "3 tbsp olive oil" ])
+        expect(json["instructions"]).to eq([ "Boil pasta", "Prepare sauce", "Mix together" ])
       end
     end
 

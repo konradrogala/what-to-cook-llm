@@ -6,18 +6,18 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
     let(:valid_json_response) do
       {
         title: "Pasta",
-        ingredients: ["tomatoes", "pasta"],
-        instructions: ["Cook pasta"]
+        ingredients: [ "tomatoes", "pasta" ],
+        instructions: [ "Cook pasta" ]
       }.to_json
     end
     let(:valid_recipe_attributes) do
       {
         title: "Pasta",
-        ingredients: ["tomatoes", "pasta"],
-        instructions: ["Cook pasta"]
+        ingredients: [ "tomatoes", "pasta" ],
+        instructions: [ "Cook pasta" ]
       }
     end
-    let(:valid_recipe) do 
+    let(:valid_recipe) do
       create(:recipe,
         title: "Pasta",
         ingredients: "tomatoes\npasta",
@@ -44,13 +44,13 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
         expect(json_response).to include("recipe", "remaining_requests")
         expect(json_response["recipe"]).to include(
           "title" => "Pasta",
-          "ingredients" => ["tomatoes", "pasta"],
-          "instructions" => ["Cook pasta"]
+          "ingredients" => [ "tomatoes", "pasta" ],
+          "instructions" => [ "Cook pasta" ]
         )
       end
 
       it "accepts array of ingredients" do
-        post :create, params: { ingredients: ["tomatoes", "pasta"] }
+        post :create, params: { ingredients: [ "tomatoes", "pasta" ] }
         expect(response).to have_http_status(:created)
       end
     end
@@ -85,7 +85,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       it "handles RecipeGenerator errors" do
         allow(Api::V1::RecipeGenerator).to receive(:perform)
           .and_raise(Api::V1::RecipeGenerator::GenerationError, "Generation failed")
-        
+
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe")
@@ -94,7 +94,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       it "handles RecipeParser errors" do
         allow(Api::V1::RecipeParser).to receive(:perform)
           .and_raise(Api::V1::RecipeParser::ParsingError, "Parsing failed")
-        
+
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)["error"]).to eq("Failed to parse recipe")
@@ -103,7 +103,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       it "handles RecipeCreator errors" do
         allow(Api::V1::RecipeCreator).to receive(:perform)
           .and_raise(Api::V1::RecipeCreator::CreationError, "Creation failed")
-        
+
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)["error"]).to eq("Failed to create recipe")
@@ -112,7 +112,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       it "handles unexpected errors" do
         allow(Api::V1::RecipeGenerator).to receive(:perform)
           .and_raise(StandardError, "Unexpected error")
-        
+
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:internal_server_error)
         expect(JSON.parse(response.body)["error"]).to eq("An unexpected error occurred")

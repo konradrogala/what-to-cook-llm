@@ -42,7 +42,7 @@ class ApiRequestLimiter
     Rails.logger.info "[MIDDLEWARE] Response status: #{status}"
     Rails.logger.info "[MIDDLEWARE] Final count: #{session[:api_requests_count]}"
 
-    [status, headers, response]
+    [ status, headers, response ]
   end
 
   private
@@ -63,10 +63,10 @@ class ApiRequestLimiter
     [
       429,
       { "Content-Type" => "application/json" },
-      [{ 
+      [ {
         error: "Rate limit exceeded. Maximum 5 requests per session allowed.",
         remaining_requests: 0
-      }.to_json]
+      }.to_json ]
     ]
   end
 end

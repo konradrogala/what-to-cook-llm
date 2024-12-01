@@ -13,8 +13,8 @@ class Recipe < ApplicationRecord
 
   def as_json(options = {})
     super(options).merge(
-      'ingredients' => ingredients_array,
-      'instructions' => instructions_array
+      "ingredients" => ingredients_array,
+      "instructions" => instructions_array
     )
   end
 end

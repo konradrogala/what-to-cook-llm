@@ -52,5 +52,5 @@ Rails.application.configure do
   config.action_controller.raise_on_missing_callback_actions = true
 
   # Configure session store for test environment
-  config.session_store :cookie_store, key: '_what_to_cook_llm_test_session'
+  config.session_store :cookie_store, key: "_what_to_cook_llm_test_session"
 end

@@ -10,8 +10,8 @@ RSpec.describe Api::V1::RecipeGenerator do
           "message" => {
             "content" => {
               "title" => "Simple Tomato Pasta",
-              "ingredients" => ["400g pasta", "4 tomatoes", "3 tbsp olive oil"],
-              "instructions" => ["Boil pasta", "Prepare sauce", "Mix together"]
+              "ingredients" => [ "400g pasta", "4 tomatoes", "3 tbsp olive oil" ],
+              "instructions" => [ "Boil pasta", "Prepare sauce", "Mix together" ]
             }.to_json
           }
         }
@@ -37,7 +37,7 @@ RSpec.describe Api::V1::RecipeGenerator do
       end
 
       it "handles array input" do
-        result = described_class.perform(["tomatoes", "pasta", "olive oil"])
+        result = described_class.perform([ "tomatoes", "pasta", "olive oil" ])
         expect(JSON.parse(result)).to include(
           "title" => "Simple Tomato Pasta"
         )
