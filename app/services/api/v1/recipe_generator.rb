@@ -2,11 +2,14 @@ module Api
   module V1
     class RecipeGenerator
       include Performable
+      include InputSanitizer
 
       class GenerationError < StandardError; end
 
       def initialize(ingredients)
-        @ingredients = ingredients
+        @ingredients = sanitize_input(ingredients)
+      rescue InputError => e
+        raise GenerationError, "Invalid ingredients input: #{e.message}"
       end
 
       def perform

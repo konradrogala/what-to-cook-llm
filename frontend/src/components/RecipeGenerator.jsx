@@ -9,18 +9,18 @@ import {
   Progress,
   Center,
   Badge,
-  Group
+  Group,
+  Alert,
+  Box
 } from '@mantine/core';
 import axios from 'axios';
 
-// Create axios instance with default config
 const api = axios.create({
   baseURL: 'http://localhost:3001',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-  // Ensure cookies are sent with requests
   xsrfCookieName: 'XSRF-TOKEN',
   xsrfHeaderName: 'X-XSRF-TOKEN',
 });
@@ -35,10 +35,10 @@ const LoadingState = ({ step }) => {
   const currentStep = steps[step] || steps[0];
   
   return (
-    <Paper p="xl" radius="md" withBorder>
+    <Paper p="xl" radius="md" withBorder shadow="sm" bg="gray.0">
       <Stack spacing="md">
-        <Title order={3} align="center">Please wait</Title>
-        <Text align="center" size="lg" color="dimmed">
+        <Title order={3} align="center" c="gray.8">Please wait</Title>
+        <Text align="center" size="lg" c="gray.6">
           {currentStep.label}
         </Text>
         <Progress 
@@ -46,6 +46,7 @@ const LoadingState = ({ step }) => {
           size="xl" 
           radius="xl" 
           striped
+          color="grape"
         />
       </Stack>
     </Paper>
@@ -53,6 +54,7 @@ const LoadingState = ({ step }) => {
 };
 
 const MAX_REQUESTS = 5;
+const MAX_INPUT_LENGTH = 1000;
 
 const RecipeGenerator = () => {
   const [ingredients, setIngredients] = useState('');
@@ -62,10 +64,31 @@ const RecipeGenerator = () => {
   const [error, setError] = useState(null);
   const [remainingRequests, setRemainingRequests] = useState(MAX_REQUESTS);
 
+  const validateInput = (input) => {
+    if (!input.trim()) {
+      return 'Ingredients cannot be empty';
+    }
+    if (input.length > MAX_INPUT_LENGTH) {
+      return `Input exceeds maximum length of ${MAX_INPUT_LENGTH} characters`;
+    }
+    if (!/^[a-zA-Z0-9\s,.()\-+'&\n]+$/.test(input)) {
+      return 'Input contains invalid characters';
+    }
+    return null;
+  };
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setIngredients(value);
+    setError(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (remainingRequests <= 0) {
-      setError('You have reached the maximum number of requests for this session.');
+    
+    const validationError = validateInput(ingredients);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -75,12 +98,11 @@ const RecipeGenerator = () => {
     setLoadingStep(0);
 
     try {
-      // Simulate step progress since we can't track actual API progress
-      setLoadingStep(0); // Generating recipe
+      setLoadingStep(0);
       const response = await api.post('/api/v1/recipes', {
-        ingredients,
+        ingredients: ingredients.trim(),
       });
-      setLoadingStep(2); // Final step
+      setLoadingStep(2);
       setRecipe(response.data.recipe);
       setRemainingRequests(response.data.remaining_requests);
     } catch (err) {
@@ -88,7 +110,8 @@ const RecipeGenerator = () => {
         setError('You have reached the maximum number of requests for this session.');
         setRemainingRequests(0);
       } else {
-        setError(err.response?.data?.error || 'Something went wrong');
+        const errorMessage = err.response?.data?.error || 'An unexpected error occurred';
+        setError(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -97,66 +120,103 @@ const RecipeGenerator = () => {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', minHeight: '400px' }}>
-      <Title order={1} align="center" mb="xl">
+    <Box p="xl" maw={800} mx="auto">
+      <Title order={1} align="center" mb="xl" c="grape.7">
         Recipe Generator
       </Title>
 
-      <Paper p="md" mb="lg">
-        <form onSubmit={handleSubmit}>
-          <TextInput
-            label="Enter your ingredients"
-            placeholder="e.g., chicken, rice, tomatoes"
-            value={ingredients}
-            onChange={(e) => setIngredients(e.target.value)}
-            required
-            mb="md"
-          />
-          <Stack spacing="sm">
-            <Button 
-              type="submit" 
-              fullWidth 
-              loading={loading}
-              disabled={loading || remainingRequests <= 0}
-            >
-              {loading ? 'Generating Recipe...' : 'Generate Recipe'}
-            </Button>
-            <Group position="center" spacing="xs">
-              <Text size="sm" color="dimmed">Remaining requests:</Text>
-              <Badge color={remainingRequests > 0 ? 'blue' : 'red'}>{remainingRequests}</Badge>
-            </Group>
+      {remainingRequests <= 0 ? (
+        <Alert
+          color="pink"
+          title="Session Limit Reached"
+          mb="lg"
+          variant="light"
+          radius="md"
+        >
+          <Stack spacing="xs">
+            <Text>You have reached the maximum number of requests for this session.</Text>
+            <Text size="sm">Please try again in a new session to generate more recipes.</Text>
+            <Text size="sm" c="dimmed" mt="md">Session limit: {MAX_REQUESTS} recipes per session</Text>
           </Stack>
-        </form>
-      </Paper>
+        </Alert>
+      ) : (
+        <>
+          <Paper p="xl" radius="md" withBorder shadow="sm" bg="pink.0">
+            <form onSubmit={handleSubmit}>
+              <TextInput
+                label="Enter your ingredients"
+                description="Separate ingredients with commas (e.g., chicken, rice, tomatoes)"
+                placeholder="e.g., chicken, rice, tomatoes"
+                value={ingredients}
+                onChange={handleInputChange}
+                error={error && !loading ? error : null}
+                required
+                mb="md"
+                size="md"
+                radius="md"
+              />
+              <Stack spacing="sm">
+                <Button 
+                  type="submit" 
+                  fullWidth 
+                  loading={loading}
+                  disabled={loading}
+                  size="md"
+                  radius="md"
+                  color="grape"
+                >
+                  {loading ? 'Generating Recipe...' : 'Generate Recipe'}
+                </Button>
+                <Group position="center" spacing="xs">
+                  <Text size="sm" c="dimmed">Remaining requests:</Text>
+                  <Badge 
+                    size="lg"
+                    variant="light"
+                    color="blue"
+                  >
+                    {remainingRequests}
+                  </Badge>
+                </Group>
+              </Stack>
+            </form>
+          </Paper>
 
-      {loading && (
-        <Center my="xl">
-          <LoadingState step={loadingStep} />
-        </Center>
-      )}
+          {loading && (
+            <Center my="xl">
+              <LoadingState step={loadingStep} />
+            </Center>
+          )}
 
-      {error && (
-        <Paper p="md" mb="lg" style={{ backgroundColor: '#ffebee' }}>
-          <Text color="red">{error}</Text>
-        </Paper>
+          {error && !loading && (
+            <Alert 
+              color="red" 
+              title="Error" 
+              mb="lg"
+              variant="light"
+              radius="md"
+            >
+              {error}
+            </Alert>
+          )}
+        </>
       )}
 
       {recipe && (
-        <Paper p="md">
-          <Title order={2} mb="md">{recipe.title}</Title>
+        <Paper p="xl" radius="md" withBorder shadow="sm" bg="cyan.0">
+          <Title order={2} mb="md" c="cyan.8">{recipe.title}</Title>
           
-          <Title order={3} mb="xs">Ingredients:</Title>
+          <Title order={3} mb="xs" c="cyan.7">Ingredients:</Title>
           <Text mb="md" component="pre" style={{ whiteSpace: 'pre-wrap' }}>
             {recipe.ingredients}
           </Text>
 
-          <Title order={3} mb="xs">Instructions:</Title>
+          <Title order={3} mb="xs" c="cyan.7">Instructions:</Title>
           <Text component="pre" style={{ whiteSpace: 'pre-wrap' }}>
             {recipe.instructions}
           </Text>
         </Paper>
       )}
-    </div>
+    </Box>
   );
 };
 
