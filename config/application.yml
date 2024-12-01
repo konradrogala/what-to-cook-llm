@@ -1,2 +1,2 @@
 test:
-  OPENAI_API_KEY: <%= Rails.application.credentials.openai.api_key %>
+  OPENAI_API_KEY: <%= ENV['OPENAI_API_KEY'] %>
