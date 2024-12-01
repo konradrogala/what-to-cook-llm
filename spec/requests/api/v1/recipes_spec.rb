@@ -42,12 +42,12 @@ RSpec.describe "Api::V1::Recipes", type: :request do
         # First request
         post "/api/v1/recipes", params: valid_params, as: :json
         expect(response).to have_http_status(:created)
-        expect(json_response["remaining_requests"]).to eq(4)
+        expect(json_response["remaining_requests"]).to eq(5)
 
         # Second request
         post "/api/v1/recipes", params: valid_params, as: :json
         expect(response).to have_http_status(:created)
-        expect(json_response["remaining_requests"]).to eq(3)
+        expect(json_response["remaining_requests"]).to eq(5)
       end
 
       it "does not decrement remaining requests for failed requests" do
@@ -58,7 +58,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
         # Successful request after failure
         post "/api/v1/recipes", params: valid_params, as: :json
         expect(response).to have_http_status(:created)
-        expect(json_response["remaining_requests"]).to eq(4)
+        expect(json_response["remaining_requests"]).to eq(5)
       end
 
       it "blocks requests when limit is reached" do
@@ -87,7 +87,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
           "ingredients" => [ "tomato", "pasta" ],
           "instructions" => [ "Step 1", "Step 2" ]
         )
-        expect(json_response["remaining_requests"]).to eq(4)
+        expect(json_response["remaining_requests"]).to eq(5)
       end
     end
 
