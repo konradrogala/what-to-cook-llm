@@ -1,4 +1,4 @@
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Api::V1::RecipeCreator do
   let(:valid_attributes) do
@@ -9,16 +9,17 @@ RSpec.describe Api::V1::RecipeCreator do
     }
   end
 
-  describe '.perform' do
-    context 'when attributes are valid' do
-      it 'creates a new recipe' do
+  describe ".perform" do
+    context "when attributes are valid" do
+      it "creates a new recipe" do
         expect {
           described_class.perform(valid_attributes)
         }.to change(Recipe, :count).by(1)
       end
 
-      it 'returns the created recipe' do
+      it "returns the created recipe" do
         recipe = described_class.perform(valid_attributes)
+
         expect(recipe).to be_a(Recipe)
         expect(recipe).to be_persisted
         expect(recipe.title).to eq("Simple Tomato Pasta")
@@ -27,19 +28,19 @@ RSpec.describe Api::V1::RecipeCreator do
       end
     end
 
-    context 'when attributes are invalid' do
-      let(:invalid_attributes) { { title: "", ingredients: "", instructions: "" } }
+    context "when attributes are invalid" do
+      let(:invalid_attributes) { {} }
 
-      it 'raises CreationError' do
+      it "raises ValidationError" do
         expect {
           described_class.perform(invalid_attributes)
-        }.to raise_error(Api::V1::RecipeCreator::CreationError)
+        }.to raise_error(Api::V1::RecipeCreator::ValidationError)
       end
 
-      it 'does not create a recipe' do
+      it "does not create a recipe" do
         expect {
           described_class.perform(invalid_attributes)
-        }.to raise_error(Api::V1::RecipeCreator::CreationError)
+        }.to raise_error(Api::V1::RecipeCreator::ValidationError)
         expect(Recipe.count).to eq(0)
       end
     end

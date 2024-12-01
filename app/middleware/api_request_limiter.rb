@@ -32,34 +32,31 @@ class ApiRequestLimiter
     # Mark this request as processed
     env[REQUEST_KEY] = true
 
-    # Increment counter before the request
-    session[:api_requests_count] += 1
-    Rails.logger.info "[MIDDLEWARE] Incremented count to: #{session[:api_requests_count]}"
-
-    # Call the app
+    # Process the request
     status, headers, response = @app.call(env)
 
-    Rails.logger.info "[MIDDLEWARE] Response status: #{status}"
-    Rails.logger.info "[MIDDLEWARE] Final count: #{session[:api_requests_count]}"
+    # Only increment the counter for successful API requests
+    if api_request?(env) && status == 201
+      session[:api_requests_count] += 1
+      Rails.logger.info "[MIDDLEWARE] Updated count: #{session[:api_requests_count]}"
+    end
 
-    [status, headers, response]
+    [ status, headers, response ]
   end
 
   private
 
   def api_request?(env)
-    matches = env["PATH_INFO"].start_with?("/api/v1/recipes") &&
-             env["REQUEST_METHOD"] == "POST" &&
-             env["HTTP_ACCEPT"]&.include?("application/json")
-    Rails.logger.info "[MIDDLEWARE] API request check: #{matches}"
-    matches
+    env["REQUEST_PATH"]&.start_with?("/api/") &&
+      env["REQUEST_METHOD"] == "POST" &&
+      env["HTTP_ACCEPT"]&.include?("application/json")
   end
 
   def rate_limit_response
     [
       429,
       { "Content-Type" => "application/json" },
-      [{ error: "Rate limit exceeded. Maximum 5 requests per session allowed." }.to_json]
+      [ { error: "Rate limit exceeded. Maximum 5 requests per session allowed." }.to_json ]
     ]
   end
 end

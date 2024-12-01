@@ -19,7 +19,7 @@ module Api
         response = client.chat(
           parameters: {
             model: "gpt-3.5-turbo-1106",
-            messages: [{ role: "user", content: prompt }],
+            messages: [ { role: "user", content: prompt } ],
             response_format: { type: "json_object" }
           }
         )
