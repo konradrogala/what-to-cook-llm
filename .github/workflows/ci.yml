@@ -73,6 +73,7 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # REDIS_URL: redis://localhost:6379/0
         run: |
           bundle exec rails db:test:prepare
