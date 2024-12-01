@@ -21,7 +21,7 @@ class Api::V1::RecipesController < ApplicationController
 
       render json: {
         recipe: recipe,
-        remaining_requests: ApiRequestLimiter::MAX_REQUESTS - session[:api_requests_count].to_i
+        remaining_requests: ApiRequestLimiter::MAX_REQUESTS - session[:api_requests_count]
       }, status: :created
     rescue Api::V1::RecipeGenerator::GenerationError => e
       render json: { error: "Failed to generate recipe" }, status: :unprocessable_entity

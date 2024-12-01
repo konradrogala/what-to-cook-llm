@@ -3,13 +3,33 @@ require "rails_helper"
 RSpec.describe Api::V1::RecipesController, type: :controller do
   describe "POST #create" do
     let(:valid_ingredients) { "tomatoes, pasta" }
-    let(:valid_json_response) { { title: "Pasta", ingredients: [ "tomatoes", "pasta" ], instructions: [ "Cook pasta" ] }.to_json }
-    let(:valid_recipe) { create(:recipe) }
+    let(:valid_json_response) do
+      {
+        title: "Pasta",
+        ingredients: ["tomatoes", "pasta"],
+        instructions: ["Cook pasta"]
+      }.to_json
+    end
+    let(:valid_recipe_attributes) do
+      {
+        title: "Pasta",
+        ingredients: ["tomatoes", "pasta"],
+        instructions: ["Cook pasta"]
+      }
+    end
+    let(:valid_recipe) do 
+      create(:recipe,
+        title: "Pasta",
+        ingredients: "tomatoes\npasta",
+        instructions: "Cook pasta"
+      )
+    end
 
     before do
       allow(Api::V1::RecipeGenerator).to receive(:perform).and_return(valid_json_response)
-      allow(Api::V1::RecipeParser).to receive(:perform).and_return(valid_json_response)
+      allow(Api::V1::RecipeParser).to receive(:perform).and_return(valid_recipe_attributes)
       allow(Api::V1::RecipeCreator).to receive(:perform).and_return(valid_recipe)
+      session[:api_requests_count] = 0
     end
 
     context "with valid parameters" do
@@ -20,11 +40,17 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
       it "returns recipe and remaining requests" do
         post :create, params: { ingredients: valid_ingredients }
-        expect(JSON.parse(response.body)).to include("recipe", "remaining_requests")
+        json_response = JSON.parse(response.body)
+        expect(json_response).to include("recipe", "remaining_requests")
+        expect(json_response["recipe"]).to include(
+          "title" => "Pasta",
+          "ingredients" => ["tomatoes", "pasta"],
+          "instructions" => ["Cook pasta"]
+        )
       end
 
       it "accepts array of ingredients" do
-        post :create, params: { ingredients: [ "tomatoes", "pasta" ] }
+        post :create, params: { ingredients: ["tomatoes", "pasta"] }
         expect(response).to have_http_status(:created)
       end
     end

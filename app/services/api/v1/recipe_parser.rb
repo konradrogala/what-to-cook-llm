@@ -16,8 +16,8 @@ module Api
 
         {
           title: recipe_data["title"],
-          ingredients: recipe_data["ingredients"].join("\n"),
-          instructions: recipe_data["instructions"].join("\n")
+          ingredients: recipe_data["ingredients"],
+          instructions: recipe_data["instructions"]
         }
       rescue JSON::ParserError => e
         Rails.logger.error "Failed to parse recipe data: #{e.message}"
