@@ -4,10 +4,10 @@ class Recipe < ApplicationRecord
   validates :instructions, presence: true
 
   def ingredients
-    self[:ingredients].split("\n")
+    self[:ingredients]&.split("\n") || []
   end
 
   def instructions
-    self[:instructions].split("\n")
+    self[:instructions]&.split("\n") || []
   end
 end
