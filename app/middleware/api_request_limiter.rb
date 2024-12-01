@@ -1,6 +1,7 @@
 class ApiRequestLimiter
   MAX_REQUESTS = 5
   REQUEST_KEY = "api_request_processed"
+  RESET_TIME_KEY = "api_requests_reset_time"
 
   def initialize(app)
     @app = app
@@ -13,6 +14,7 @@ class ApiRequestLimiter
     request = Rack::Request.new(env)
     session = request.session
     session[:api_requests_count] ||= 0
+    session[RESET_TIME_KEY] ||= 1.hour.from_now.to_i
 
     # Check if this specific request has already been processed
     if env[REQUEST_KEY]
@@ -24,9 +26,16 @@ class ApiRequestLimiter
     Rails.logger.info "[MIDDLEWARE] Accept header: #{env['HTTP_ACCEPT']}"
     Rails.logger.info "[MIDDLEWARE] Initial count: #{session[:api_requests_count]}"
 
+    # Check if reset time has passed
+    if Time.now.to_i >= session[RESET_TIME_KEY]
+      session[:api_requests_count] = 0
+      session[RESET_TIME_KEY] = 1.hour.from_now.to_i
+      Rails.logger.info "[MIDDLEWARE] Reset counter due to time expiration"
+    end
+
     if session[:api_requests_count] >= MAX_REQUESTS
       Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded"
-      return rate_limit_response
+      return rate_limit_response(session[RESET_TIME_KEY])
     end
 
     # Mark this request as processed
@@ -59,13 +68,16 @@ class ApiRequestLimiter
       accept&.include?("application/json")
   end
 
-  def rate_limit_response
+  def rate_limit_response(reset_time)
+    minutes_until_reset = ((reset_time - Time.now.to_i) / 60.0).ceil
     [
       429,
       { "Content-Type" => "application/json" },
       [ {
-        error: "Rate limit exceeded. Maximum 5 requests per session allowed.",
-        remaining_requests: 0
+        error: "Rate limit exceeded. Maximum #{MAX_REQUESTS} requests per hour allowed.",
+        remaining_requests: 0,
+        reset_in_minutes: minutes_until_reset,
+        message: "Please try again in #{minutes_until_reset} #{'minute'.pluralize(minutes_until_reset)}"
       }.to_json ]
     ]
   end
