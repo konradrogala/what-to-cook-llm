@@ -22,11 +22,13 @@ RSpec.describe Api::V1::RecipeCreator do
         expect(recipe).to be_a(Recipe)
         expect(recipe).to be_persisted
         expect(recipe.title).to eq("Simple Tomato Pasta")
+        expect(recipe.ingredients).to eq(["400g pasta", "4 tomatoes", "3 tbsp olive oil"])
+        expect(recipe.instructions).to eq(["Boil pasta", "Prepare sauce", "Mix together"])
       end
     end
 
     context 'when attributes are invalid' do
-      let(:invalid_attributes) { { title: "" } }
+      let(:invalid_attributes) { { title: "", ingredients: "", instructions: "" } }
 
       it 'raises CreationError' do
         expect {
