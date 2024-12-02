@@ -38,7 +38,29 @@ module Api
       attr_reader :ingredients
 
       def prompt
-        "Generate a recipe using these ingredients: #{ingredients}. Format the response as JSON with the following structure: { title: string, ingredients: array of strings, instructions: array of strings }"
+        <<~PROMPT
+          Generate a recipe using these ingredients: #{ingredients}.
+          
+          Format the response as JSON with the following structure:
+          {
+            "title": "Recipe title (at least 3 characters)",
+            "ingredients": [
+              "List of ingredients (each at least 2 characters)",
+              "Include both provided and additional ingredients needed"
+            ],
+            "instructions": [
+              "Detailed step-by-step instructions (each at least 10 characters)",
+              "Include cooking times and temperatures where relevant",
+              "At least 2 steps required"
+            ]
+          }
+          
+          Make sure to:
+          1. Include all provided ingredients in the recipe
+          2. Add any necessary additional ingredients (salt, oil, etc.)
+          3. Write clear and detailed instructions
+          4. Include cooking times and temperatures where relevant
+        PROMPT
       end
     end
   end
