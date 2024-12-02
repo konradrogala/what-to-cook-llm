@@ -27,29 +27,29 @@ RSpec.describe Api::V1::RecipeFeasibilityChecker do
   let(:openai_client) { instance_double(OpenAI::Client) }
   let(:feasible_response) do
     {
-      'choices' => [{
+      'choices' => [ {
         'message' => {
           'content' => {
             is_feasible: true,
             issues: [],
-            suggestions: ['Consider adding grated parmesan cheese as a garnish']
+            suggestions: [ 'Consider adding grated parmesan cheese as a garnish' ]
           }.to_json
         }
-      }]
+      } ]
     }
   end
 
   let(:not_feasible_response) do
     {
-      'choices' => [{
+      'choices' => [ {
         'message' => {
           'content' => {
             is_feasible: false,
-            issues: ['Missing cooking temperature for the sauce'],
-            suggestions: ['Add specific temperature for simmering the sauce']
+            issues: [ 'Missing cooking temperature for the sauce' ],
+            suggestions: [ 'Add specific temperature for simmering the sauce' ]
           }.to_json
         }
-      }]
+      } ]
     }
   end
 
@@ -103,11 +103,11 @@ RSpec.describe Api::V1::RecipeFeasibilityChecker do
     context 'when response is invalid JSON' do
       before do
         allow(openai_client).to receive(:chat).and_return({
-          'choices' => [{
+          'choices' => [ {
             'message' => {
               'content' => 'invalid json'
             }
-          }]
+          } ]
         })
       end
 

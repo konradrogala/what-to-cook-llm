@@ -40,7 +40,7 @@ module Api
       def prompt
         <<~PROMPT
           Generate a recipe using these ingredients: #{ingredients}.
-          
+
           Format the response as JSON with the following structure:
           {
             "title": "Recipe title (at least 3 characters)",
@@ -54,7 +54,7 @@ module Api
               "At least 2 steps required"
             ]
           }
-          
+
           Make sure to:
           1. Include all provided ingredients in the recipe
           2. Add any necessary additional ingredients (salt, oil, etc.)

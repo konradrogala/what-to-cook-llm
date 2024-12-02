@@ -4,7 +4,7 @@ RSpec.describe Api::V1::RecipeValidator do
   let(:valid_recipe_data) do
     {
       'title' => 'Spaghetti Bolognese',
-      'ingredients' => ['spaghetti', 'ground beef', 'tomato sauce'],
+      'ingredients' => [ 'spaghetti', 'ground beef', 'tomato sauce' ],
       'instructions' => [
         'Boil the spaghetti according to package instructions',
         'Brown the ground beef in a large pan'
@@ -79,7 +79,7 @@ RSpec.describe Api::V1::RecipeValidator do
     end
 
     context 'when not enough ingredients' do
-      let(:recipe_data) { valid_recipe_data.merge('ingredients' => ['spaghetti']) }
+      let(:recipe_data) { valid_recipe_data.merge('ingredients' => [ 'spaghetti' ]) }
 
       it 'raises ValidationError' do
         expect { subject.perform }.to raise_error(
@@ -91,7 +91,7 @@ RSpec.describe Api::V1::RecipeValidator do
 
     context 'when ingredient is too short' do
       let(:recipe_data) do
-        valid_recipe_data.merge('ingredients' => ['spaghetti', 'a'])
+        valid_recipe_data.merge('ingredients' => [ 'spaghetti', 'a' ])
       end
 
       it 'raises ValidationError' do
@@ -104,7 +104,7 @@ RSpec.describe Api::V1::RecipeValidator do
 
     context 'when not enough instructions' do
       let(:recipe_data) do
-        valid_recipe_data.merge('instructions' => ['Boil the spaghetti'])
+        valid_recipe_data.merge('instructions' => [ 'Boil the spaghetti' ])
       end
 
       it 'raises ValidationError' do

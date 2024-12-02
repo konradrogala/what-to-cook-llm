@@ -28,7 +28,7 @@ module Api
         response = client.chat(
           parameters: {
             model: "gpt-3.5-turbo-1106",
-            messages: [{ role: "user", content: feasibility_prompt }],
+            messages: [ { role: "user", content: feasibility_prompt } ],
             response_format: { type: "json_object" }
           }
         )
@@ -77,10 +77,10 @@ module Api
 
           Recipe to analyze:
           Title: #{recipe_data["title"]}
-          
+
           Ingredients:
           #{recipe_data["ingredients"].join("\n")}
-          
+
           Instructions:
           #{recipe_data["instructions"].join("\n")}
 

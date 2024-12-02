@@ -27,7 +27,7 @@ class ApiRequestLimiter
     if counter.limit_exceeded?
       Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded after request"
       ensure_reset_time(request.session)
-      
+
       # If the response was successful, modify it to include rate limit info
       if status == 201 || status == 200
         begin
@@ -35,13 +35,13 @@ class ApiRequestLimiter
           response_body = response.respond_to?(:body) ? response.body : response[0]
           response_body = response_body.respond_to?(:first) ? response_body.first : response_body
           body = JSON.parse(response_body)
-          
+
           body["limit_reached"] = true
           body["message"] = "You have reached the maximum number of requests for this session."
           body["remaining_requests"] = 0
-          
+
           # Create new response with modified body
-          response = [body.to_json]
+          response = [ body.to_json ]
         rescue JSON::ParserError => e
           Rails.logger.error "[MIDDLEWARE] Failed to parse response body: #{e.message}"
         end
@@ -51,7 +51,7 @@ class ApiRequestLimiter
     Rails.logger.info "[MIDDLEWARE] Response status: #{status}"
     Rails.logger.info "[MIDDLEWARE] Final count: #{counter.current_count}"
 
-    [status, headers, response]
+    [ status, headers, response ]
   end
 
   private
@@ -78,11 +78,11 @@ class ApiRequestLimiter
     [
       429,
       { "Content-Type" => "application/json" },
-      [{
+      [ {
         error: "Rate limit exceeded. Maximum #{MAX_REQUESTS} requests per hour allowed.",
         remaining_requests: 0,
         minutes_until_reset: minutes_until_reset
-      }.to_json]
+      }.to_json ]
     ]
   end
 end

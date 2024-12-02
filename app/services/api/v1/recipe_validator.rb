@@ -19,7 +19,7 @@ module Api
         validate_required_fields!
         validate_array_fields!
         validate_content!
-        
+
         true
       end
 
@@ -54,14 +54,14 @@ module Api
       end
 
       def validate_title!
-        title = recipe_data['title'].to_s
+        title = recipe_data["title"].to_s
         if title.blank? || title.length < 3
           raise ValidationError, "Title must be at least 3 characters long"
         end
       end
 
       def validate_ingredients!
-        ingredients = recipe_data['ingredients']
+        ingredients = recipe_data["ingredients"]
         if ingredients.length < MIN_INGREDIENTS
           raise ValidationError, "Recipe must have at least #{MIN_INGREDIENTS} ingredients"
         end
@@ -74,7 +74,7 @@ module Api
       end
 
       def validate_instructions!
-        instructions = recipe_data['instructions']
+        instructions = recipe_data["instructions"]
         if instructions.length < MIN_INSTRUCTIONS
           raise ValidationError, "Recipe must have at least #{MIN_INSTRUCTIONS} instructions"
         end
