@@ -20,12 +20,6 @@ class ApiRequestLimiter
 
     counter.reset_if_expired
 
-    if counter.limit_exceeded?
-      Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded"
-      ensure_reset_time(request.session)
-      return rate_limit_response(request.session[RESET_TIME_KEY])
-    end
-
     # Call the app
     status, headers, response = @app.call(env)
 
@@ -33,13 +27,31 @@ class ApiRequestLimiter
     if counter.limit_exceeded?
       Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded after request"
       ensure_reset_time(request.session)
-      return rate_limit_response(request.session[RESET_TIME_KEY])
+      
+      # If the response was successful, modify it to include rate limit info
+      if status == 201 || status == 200
+        begin
+          # Convert response body to string and parse JSON
+          response_body = response.respond_to?(:body) ? response.body : response[0]
+          response_body = response_body.respond_to?(:first) ? response_body.first : response_body
+          body = JSON.parse(response_body)
+          
+          body["limit_reached"] = true
+          body["message"] = "You have reached the maximum number of requests for this session."
+          body["remaining_requests"] = 0
+          
+          # Create new response with modified body
+          response = [body.to_json]
+        rescue JSON::ParserError => e
+          Rails.logger.error "[MIDDLEWARE] Failed to parse response body: #{e.message}"
+        end
+      end
     end
 
     Rails.logger.info "[MIDDLEWARE] Response status: #{status}"
     Rails.logger.info "[MIDDLEWARE] Final count: #{counter.current_count}"
 
-    [ status, headers, response ]
+    [status, headers, response]
   end
 
   private
@@ -56,21 +68,21 @@ class ApiRequestLimiter
       accept&.include?("application/json")
   end
 
+  def ensure_reset_time(session)
+    return if session[RESET_TIME_KEY]
+    session[RESET_TIME_KEY] = 1.hour.from_now.to_i
+  end
+
   def rate_limit_response(reset_time)
     minutes_until_reset = ((reset_time - Time.now.to_i) / 60.0).ceil
     [
       429,
       { "Content-Type" => "application/json" },
-      [ {
+      [{
         error: "Rate limit exceeded. Maximum #{MAX_REQUESTS} requests per hour allowed.",
         remaining_requests: 0,
-        reset_in_minutes: minutes_until_reset,
-        message: "Please try again in #{minutes_until_reset} #{'minute'.pluralize(minutes_until_reset)}"
-      }.to_json ]
+        minutes_until_reset: minutes_until_reset
+      }.to_json]
     ]
-  end
-
-  def ensure_reset_time(session)
-    session[RESET_TIME_KEY] ||= 1.hour.from_now.to_i
   end
 end

@@ -11,7 +11,8 @@ import {
   Badge,
   Group,
   Alert,
-  Box
+  Box,
+  List
 } from '@mantine/core';
 import axios from 'axios';
 
@@ -59,36 +60,24 @@ const MAX_INPUT_LENGTH = 1000;
 const RecipeGenerator = () => {
   const [ingredients, setIngredients] = useState('');
   const [recipe, setRecipe] = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
-  const [error, setError] = useState(null);
   const [remainingRequests, setRemainingRequests] = useState(MAX_REQUESTS);
 
-  const validateInput = (input) => {
-    if (!input.trim()) {
-      return 'Ingredients cannot be empty';
+  const handleInputChange = (event) => {
+    const value = event.target.value;
+    if (value.length <= MAX_INPUT_LENGTH) {
+      setIngredients(value);
+      setError(null);
     }
-    if (input.length > MAX_INPUT_LENGTH) {
-      return `Input exceeds maximum length of ${MAX_INPUT_LENGTH} characters`;
-    }
-    if (!/^[a-zA-Z0-9\s,.()\-+'&\n]+$/.test(input)) {
-      return 'Input contains invalid characters';
-    }
-    return null;
   };
 
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setIngredients(value);
-    setError(null);
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const validationError = validateInput(ingredients);
-    if (validationError) {
-      setError(validationError);
+    if (!ingredients.trim()) {
+      setError('Please enter at least one ingredient');
       return;
     }
 
@@ -103,29 +92,42 @@ const RecipeGenerator = () => {
         ingredients: ingredients.trim(),
       });
       setLoadingStep(2);
-      setRecipe(response.data.recipe);
-      setRemainingRequests(response.data.remaining_requests);
+
+      // Zawsze zachowaj przepis jeśli został zwrócony
+      if (response.data.recipe) {
+        setRecipe(response.data.recipe);
+      }
+
+      // Zaktualizuj pozostałe requestsy
+      if (typeof response.data.remaining_requests !== 'undefined') {
+        setRemainingRequests(response.data.remaining_requests);
+      }
+
+      // Ustaw błąd jeśli przekroczono limit
+      if (response.data.limit_reached) {
+        setError(response.data.message || 'You have reached the maximum number of requests for this session.');
+      }
     } catch (err) {
+      const errorMessage = err.response?.data?.error || 'An unexpected error occurred';
+      setError(errorMessage);
+      
+      // Jeśli status to 429, ustaw remaining_requests na 0
       if (err.response?.status === 429) {
-        setError('You have reached the maximum number of requests for this session.');
         setRemainingRequests(0);
-      } else {
-        const errorMessage = err.response?.data?.error || 'An unexpected error occurred';
-        setError(errorMessage);
       }
     } finally {
       setLoading(false);
-      setLoadingStep(0);
     }
   };
 
   return (
     <Box p="xl" maw={800} mx="auto">
-      <Title order={1} align="center" mb="xl" c="grape.7">
+      <Title order={1} mb="xl" c="grape.7">
         Recipe Generator
       </Title>
 
-      {remainingRequests <= 0 ? (
+      {/* Alert o przekroczeniu limitu */}
+      {remainingRequests <= 0 && (
         <Alert
           color="pink"
           title="Session Limit Reached"
@@ -139,81 +141,95 @@ const RecipeGenerator = () => {
             <Text size="sm" c="dimmed" mt="md">Session limit: {MAX_REQUESTS} recipes per session</Text>
           </Stack>
         </Alert>
-      ) : (
-        <>
-          <Paper p="xl" radius="md" withBorder shadow="sm" bg="pink.0">
-            <form onSubmit={handleSubmit}>
-              <TextInput
-                label="Enter your ingredients"
-                description="Separate ingredients with commas (e.g., chicken, rice, tomatoes)"
-                placeholder="e.g., chicken, rice, tomatoes"
-                value={ingredients}
-                onChange={handleInputChange}
-                error={error && !loading ? error : null}
-                required
-                mb="md"
-                size="md"
-                radius="md"
-              />
-              <Stack spacing="sm">
-                <Button 
-                  type="submit" 
-                  fullWidth 
-                  loading={loading}
-                  disabled={loading}
-                  size="md"
-                  radius="md"
-                  color="grape"
-                >
-                  {loading ? 'Generating Recipe...' : 'Generate Recipe'}
-                </Button>
-                <Group position="center" spacing="xs">
-                  <Text size="sm" c="dimmed">Remaining requests:</Text>
-                  <Badge 
-                    size="lg"
-                    variant="light"
-                    color="blue"
-                  >
-                    {remainingRequests}
-                  </Badge>
-                </Group>
-              </Stack>
-            </form>
-          </Paper>
-
-          {loading && (
-            <Center my="xl">
-              <LoadingState step={loadingStep} />
-            </Center>
-          )}
-
-          {error && !loading && (
-            <Alert 
-              color="red" 
-              title="Error" 
-              mb="lg"
-              variant="light"
-              radius="md"
-            >
-              {error}
-            </Alert>
-          )}
-        </>
       )}
 
+      {/* Formularz widoczny tylko gdy są dostępne requesty */}
+      {remainingRequests > 0 && (
+        <Paper p="xl" radius="md" withBorder shadow="sm" bg="pink.0" mb="xl">
+          <form onSubmit={handleSubmit}>
+            <TextInput
+              label="Enter your ingredients"
+              description="Separate ingredients with commas (e.g., chicken, rice, tomatoes)"
+              placeholder="e.g., chicken, rice, tomatoes"
+              value={ingredients}
+              onChange={handleInputChange}
+              error={error && !loading ? error : null}
+              required
+              mb="md"
+              size="md"
+              radius="md"
+            />
+            <Stack spacing="sm">
+              <Button 
+                type="submit" 
+                fullWidth 
+                loading={loading}
+                disabled={loading}
+                size="md"
+                radius="md"
+                color="grape"
+              >
+                {loading ? 'Generating Recipe...' : 'Generate Recipe'}
+              </Button>
+              <Group position="center" spacing="xs">
+                <Text size="sm" c="dimmed">Remaining requests:</Text>
+                <Badge 
+                  size="lg"
+                  variant="light"
+                  color="blue"
+                >
+                  {remainingRequests}
+                </Badge>
+              </Group>
+            </Stack>
+          </form>
+        </Paper>
+      )}
+
+      {/* Stan ładowania */}
+      {loading && (
+        <Center my="xl">
+          <LoadingState step={loadingStep} />
+        </Center>
+      )}
+
+      {/* Komunikat o błędzie */}
+      {error && !loading && remainingRequests > 0 && (
+        <Alert 
+          color="red" 
+          title="Error" 
+          mb="lg"
+          variant="light"
+          radius="md"
+        >
+          {error}
+        </Alert>
+      )}
+
+      {/* Wyświetlanie przepisu */}
       {recipe && (
         <Paper p="xl" radius="md" withBorder shadow="sm" bg="cyan.0">
           <Title order={2} mb="md" c="cyan.8">{recipe.title}</Title>
           
           <Title order={3} mb="xs" c="cyan.7">Ingredients:</Title>
-          <Text mb="md" component="pre" style={{ whiteSpace: 'pre-wrap' }}>
-            {recipe.ingredients}
-          </Text>
+          <List spacing="xs" size="md" mb="md">
+            {(typeof recipe.ingredients === 'string' ? recipe.ingredients.split('\n') : 
+              Array.isArray(recipe.ingredients) ? recipe.ingredients : [recipe.ingredients])
+              .filter(Boolean)
+              .map((ingredient, index) => (
+                <List.Item key={index}>{ingredient}</List.Item>
+            ))}
+          </List>
 
           <Title order={3} mb="xs" c="cyan.7">Instructions:</Title>
-          <Text component="pre" style={{ whiteSpace: 'pre-wrap' }}>
-            {recipe.instructions}
-          </Text>
+          <List spacing="sm" size="md">
+            {(typeof recipe.instructions === 'string' ? recipe.instructions.split('\n') : 
+              Array.isArray(recipe.instructions) ? recipe.instructions : [recipe.instructions])
+              .filter(Boolean)
+              .map((instruction, index) => (
+                <List.Item key={index}>{instruction}</List.Item>
+            ))}
+          </List>
         </Paper>
       )}
     </Box>

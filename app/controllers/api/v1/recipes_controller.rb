@@ -7,15 +7,6 @@ module Api
         counter = Api::V1::RequestCounter.new(session)
         Rails.logger.info "Current request count in controller: #{counter.current_count}"
 
-        # Check if we've exceeded the limit before processing
-        if counter.limit_exceeded?
-          Rails.logger.warn "Rate limit exceeded in controller"
-          return render_error(
-            "Rate limit exceeded. Maximum #{ApiRequestLimiter::MAX_REQUESTS} requests per hour allowed.",
-            :too_many_requests
-          )
-        end
-
         validate_ingredients!
         recipe = generate_recipe
 
@@ -23,10 +14,16 @@ module Api
         counter.increment
         Rails.logger.info "Incremented count to: #{counter.current_count}"
 
+        # Check if this was the last available request
+        is_limit_reached = counter.limit_exceeded?
+
         render json: {
           recipe: recipe,
-          remaining_requests: counter.remaining_requests
+          remaining_requests: counter.remaining_requests,
+          limit_reached: is_limit_reached,
+          message: is_limit_reached ? "You have reached the maximum number of requests for this session." : nil
         }, status: :created
+
       rescue OpenAI::Error => e
         if e.message.include?("rate limit")
           render_error("API rate limit exceeded. Please try again in about an hour", :too_many_requests)
