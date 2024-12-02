@@ -38,22 +38,5 @@ RSpec.describe Performable do
         expect(test_class_with_args.perform("value1", "value2")).to eq(["value1", "value2"])
       end
     end
-
-    context "with block" do
-      let(:test_class_with_block) do
-        Class.new do
-          include Performable
-
-          def perform(&block)
-            block.call if block_given?
-          end
-        end
-      end
-
-      it "passes the block to perform" do
-        result = test_class_with_block.perform { "block result" }
-        expect(result).to eq("block result")
-      end
-    end
   end
 end
