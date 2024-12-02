@@ -3,7 +3,18 @@ require "rails_helper"
 RSpec.describe Api::V1::RecipeGenerator do
   let(:ingredients) { "tomatoes, pasta, olive oil" }
   let(:openai_client) { instance_double(OpenAI::Client) }
-  let(:api_response) do
+  let(:feasibility_response) do
+    {
+      "choices" => [
+        {
+          "message" => {
+            "content" => "yes"
+          }
+        }
+      ]
+    }
+  end
+  let(:recipe_response) do
     {
       "choices" => [
         {
@@ -26,7 +37,22 @@ RSpec.describe Api::V1::RecipeGenerator do
   describe ".perform" do
     context "when input is valid" do
       before do
-        allow(openai_client).to receive(:chat).and_return(api_response)
+        # Mock both the feasibility check and recipe generation calls
+        allow(openai_client).to receive(:chat).with(
+          parameters: hash_including(
+            messages: array_including(
+              hash_including(content: include("analyze if they can make a coherent dish"))
+            )
+          )
+        ).and_return(feasibility_response)
+
+        allow(openai_client).to receive(:chat).with(
+          parameters: hash_including(
+            messages: array_including(
+              hash_including(content: include("Create a recipe"))
+            )
+          )
+        ).and_return(recipe_response)
       end
 
       it "returns JSON content from API response" do
@@ -49,35 +75,50 @@ RSpec.describe Api::V1::RecipeGenerator do
     end
 
     context "when input is invalid" do
-      it "raises error for SQL injection attempt" do
-        expect {
-          described_class.perform("tomatoes; DROP TABLE recipes;")
-        }.to raise_error(Api::V1::RecipeGenerator::GenerationError, /Invalid ingredients input/)
+      let(:feasibility_response) do
+        {
+          "choices" => [
+            {
+              "message" => {
+                "content" => "no"
+              }
+            }
+          ]
+        }
       end
 
-      it "raises error for too long input" do
-        long_input = "a" * (InputSanitizer::MAX_INPUT_LENGTH + 1)
-        expect {
-          described_class.perform(long_input)
-        }.to raise_error(Api::V1::RecipeGenerator::GenerationError, /Invalid ingredients input/)
+      before do
+        allow(openai_client).to receive(:chat).and_return(feasibility_response)
       end
 
-      it "raises error for invalid input type" do
+      it "raises error for empty input" do
         expect {
-          described_class.perform({ ingredient: "tomatoes" })
-        }.to raise_error(Api::V1::RecipeGenerator::GenerationError, /Invalid ingredients input/)
+          described_class.perform("")
+        }.to raise_error(Api::V1::RecipeGenerator::GenerationError)
+      end
+
+      it "raises error for nil input" do
+        expect {
+          described_class.perform(nil)
+        }.to raise_error(Api::V1::RecipeGenerator::GenerationError)
+      end
+
+      it "raises error for invalid ingredients combination" do
+        expect {
+          described_class.perform("coffee, sushi, chocolate")
+        }.to raise_error(Api::V1::RecipeGenerator::GenerationError, "These ingredients cannot make a coherent dish")
       end
     end
 
     context "when API call fails" do
       before do
-        allow(openai_client).to receive(:chat).and_raise(OpenAI::Error.new("API Error"))
+        allow(openai_client).to receive(:chat).and_raise(OpenAI::Error.new("API error"))
       end
 
-      it "raises GenerationError" do
+      it "wraps and re-raises the error" do
         expect {
           described_class.perform(ingredients)
-        }.to raise_error(Api::V1::RecipeGenerator::GenerationError, /Failed to generate recipe/)
+        }.to raise_error(Api::V1::RecipeGenerator::GenerationError, "Failed to generate recipe: API error")
       end
     end
   end

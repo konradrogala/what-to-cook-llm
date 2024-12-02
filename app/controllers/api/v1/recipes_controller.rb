@@ -6,72 +6,68 @@ module Api
       def create
         counter = Api::V1::RequestCounter.new(session)
         counter.reset_if_expired
-        Rails.logger.info "Current request count in controller: #{counter.current_count}"
 
-        # Check if limit is exceeded before processing
-        if counter.limit_exceeded?
-          render json: {
-            error: "Rate limit exceeded. Please try again later.",
-            remaining_requests: counter.remaining_requests
-          }, status: :too_many_requests
-          return
-        end
+        return limit_exceeded_message(counter) if counter.limit_exceeded?
 
         validate_ingredients!
         recipe = generate_recipe
 
-        # Increment counter after successful request
         counter.increment
-        Rails.logger.info "Incremented count to: #{counter.current_count}"
 
-        # Check if this was the last available request
         is_limit_reached = counter.limit_exceeded?
 
         render json: {
           recipe: recipe,
           remaining_requests: counter.remaining_requests,
           limit_reached: is_limit_reached,
-          message: is_limit_reached ? "You have reached the maximum number of requests for this session." : nil
+          message: is_limit_reached ? I18n.t("api.v1.recipes.messages.limit_reached") : nil
         }, status: :created
 
       rescue OpenAI::Error => e
         if e.message.include?("rate limit")
-          render_error("API rate limit exceeded. Please try again in about an hour", :too_many_requests)
+          render_error(I18n.t("api.v1.recipes.errors.openai_rate_limit"), :too_many_requests)
         else
-          render_error("OpenAI API error: #{e.message}", :service_unavailable)
+          render_error(I18n.t("api.v1.recipes.errors.openai_error", message: e.message), :service_unavailable)
         end
       rescue Api::V1::RecipeGenerator::GenerationError => e
-        render_error("Failed to generate recipe: #{e.message}", :unprocessable_entity)
+        render_error(I18n.t("api.v1.recipes.errors.recipe_generation", message: e.message), :unprocessable_entity)
       rescue Api::V1::RecipeParser::ParsingError => e
-        render_error("Failed to parse recipe: #{e.message}", :unprocessable_entity)
+        render_error(I18n.t("api.v1.recipes.errors.recipe_parsing", message: e.message), :unprocessable_entity)
       rescue Api::V1::RecipeCreator::CreationError => e
-        render_error("Failed to create recipe: #{e.message}", :unprocessable_entity)
+        render_error(I18n.t("api.v1.recipes.errors.recipe_creation", message: e.message), :unprocessable_entity)
       rescue StandardError => e
         Rails.logger.error "Unexpected error: #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
-        render_error("An unexpected error occurred", :internal_server_error)
+        render_error(I18n.t("api.v1.recipes.errors.unexpected"), :internal_server_error)
       end
 
       private
 
+      def limit_exceeded_message(counter)
+        render json: {
+          error: I18n.t("api.v1.recipes.errors.rate_limit"),
+          remaining_requests: counter.remaining_requests
+        }, status: :too_many_requests
+      end
+
       def validate_ingredients!
         if ingredients.blank? || ingredients.empty?
-          raise Api::V1::RecipeGenerator::GenerationError, "Ingredients cannot be empty"
+          raise Api::V1::RecipeGenerator::GenerationError, I18n.t("api.v1.recipes.errors.empty_ingredients")
         end
 
         unless ingredients.is_a?(String) || ingredients.is_a?(Array)
-          raise Api::V1::RecipeGenerator::GenerationError, "Invalid ingredients format. Expected String or Array"
+          raise Api::V1::RecipeGenerator::GenerationError, I18n.t("api.v1.recipes.errors.invalid_ingredients_format")
         end
+      end
+
+      def ingredients
+        @ingredients ||= params[:ingredients]
       end
 
       def generate_recipe
         json_content = Api::V1::RecipeGenerator.perform(ingredients)
         recipe_attributes = Api::V1::RecipeParser.perform(json_content)
         Api::V1::RecipeCreator.perform(recipe_attributes)
-      end
-
-      def ingredients
-        @ingredients ||= params[:ingredients]
       end
     end
   end

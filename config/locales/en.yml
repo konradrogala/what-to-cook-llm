@@ -29,3 +29,34 @@
 
 en:
   hello: "Hello world"
+  api:
+    v1:
+      recipes:
+        errors:
+          rate_limit: "Rate limit exceeded. Please try again later."
+          empty_ingredients: "Ingredients cannot be empty"
+          invalid_ingredients_format: "Invalid ingredients format. Expected String or Array"
+          openai_rate_limit: "API rate limit exceeded. Please try again in about an hour"
+          openai_error: "OpenAI API error: %{message}"
+          recipe_generation: "Failed to generate recipe: %{message}"
+          recipe_parsing: "Failed to parse recipe: %{message}"
+          recipe_creation: "Failed to create recipe: %{message}"
+          unexpected: "An unexpected error occurred"
+        messages:
+          limit_reached: "You have reached the maximum number of requests for this session."
+      recipe_generator:
+        prompts:
+          base: |
+            You are a professional chef. Create a recipe using these ingredients: %{ingredients}.
+            The recipe should be clear, concise, and easy to follow.
+            Return ONLY a JSON object with the following structure, no additional text:
+            {
+              "title": "Recipe Title",
+              "ingredients": ["ingredient 1", "ingredient 2"],
+              "instructions": ["step 1", "step 2"]
+            }
+          feasibility: |
+            You are a professional chef. Given these ingredients: %{ingredients},
+            analyze if they can make a coherent dish. Consider basic cooking principles and flavor combinations.
+            Return ONLY "yes" if the ingredients can make a sensible dish, or "no" if they cannot.
+            No additional explanation needed.
