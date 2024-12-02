@@ -33,13 +33,13 @@ class ApiRequestLimiter
         begin
           # Handle different response body formats
           response_body = case response
-                         when Array
+          when Array
                            response.first.to_s
-                         when Rack::BodyProxy
+          when Rack::BodyProxy
                            response.each.to_a.join
-                         else
+          else
                            response.to_s
-                         end
+          end
 
           body = JSON.parse(response_body)
           body["limit_reached"] = true

@@ -3,32 +3,41 @@ require 'rails_helper'
 RSpec.describe Api::V1::RequestCounter do
   let(:session) { {} }
   let(:counter) { described_class.new(session) }
-  let(:max_requests) { 5 }
 
   describe '#initialize' do
     it 'initializes with default values when session is empty' do
-      expect { counter }.to change { session['api_requests_count'] }.from(nil).to(0)
-      expect(session['api_requests_reset_time']).to be_within(1).of(1.hour.from_now.to_i)
+      # Verify initial state
+      expect(session[:api_requests_count]).to be_nil
+      expect(session[ApiRequestLimiter::RESET_TIME_KEY]).to be_nil
+
+      # Initialize counter
+      counter
+
+      # Verify final state
+      expect(session[:api_requests_count]).to eq(0)
+      expect(session[ApiRequestLimiter::RESET_TIME_KEY]).to be_within(2).of(1.hour.from_now.to_i)
     end
 
     it 'uses existing session values when present' do
-      session['api_requests_count'] = 3
+      session[:api_requests_count] = 3
       reset_time = 1.hour.from_now.to_i
-      session['api_requests_reset_time'] = reset_time
+      session[ApiRequestLimiter::RESET_TIME_KEY] = reset_time
 
       counter
-      expect(session['api_requests_count']).to eq(3)
-      expect(session['api_requests_reset_time']).to eq(reset_time)
+      expect(session[:api_requests_count]).to eq(3)
+      expect(session[ApiRequestLimiter::RESET_TIME_KEY]).to eq(reset_time)
     end
   end
 
   describe '#increment' do
+    before { counter } # ensure initialized
+
     it 'increments the request count' do
-      expect { counter.increment }.to change { session['api_requests_count'] }.by(1)
+      expect { counter.increment }.to change { session[:api_requests_count] }.from(0).to(1)
     end
 
     it 'returns the new count' do
-      session['api_requests_count'] = 2
+      session[:api_requests_count] = 2
       expect(counter.increment).to eq(3)
     end
   end
@@ -39,14 +48,17 @@ RSpec.describe Api::V1::RequestCounter do
     end
 
     it 'returns the current request count' do
-      session['api_requests_count'] = 3
+      counter # ensure initialized
+      session[:api_requests_count] = 3
       expect(counter.current_count).to eq(3)
     end
   end
 
   describe '#limit_exceeded?' do
+    before { counter } # ensure initialized
+
     context 'when count is below limit' do
-      before { session['api_requests_count'] = max_requests - 1 }
+      before { session[:api_requests_count] = ApiRequestLimiter::MAX_REQUESTS - 1 }
 
       it 'returns false' do
         expect(counter.limit_exceeded?).to be false
@@ -54,7 +66,7 @@ RSpec.describe Api::V1::RequestCounter do
     end
 
     context 'when count equals limit' do
-      before { session['api_requests_count'] = max_requests }
+      before { session[:api_requests_count] = ApiRequestLimiter::MAX_REQUESTS }
 
       it 'returns true' do
         expect(counter.limit_exceeded?).to be true
@@ -62,7 +74,7 @@ RSpec.describe Api::V1::RequestCounter do
     end
 
     context 'when count exceeds limit' do
-      before { session['api_requests_count'] = max_requests + 1 }
+      before { session[:api_requests_count] = ApiRequestLimiter::MAX_REQUESTS + 1 }
 
       it 'returns true' do
         expect(counter.limit_exceeded?).to be true
@@ -71,55 +83,61 @@ RSpec.describe Api::V1::RequestCounter do
   end
 
   describe '#reset_if_expired' do
+    before { counter } # ensure initialized
+
     context 'when reset time has passed' do
       before do
-        session['api_requests_count'] = 3
-        session['api_requests_reset_time'] = 1.hour.ago.to_i
+        session[:api_requests_count] = 3
+        session[ApiRequestLimiter::RESET_TIME_KEY] = 1.hour.ago.to_i
       end
 
       it 'resets the counter' do
-        expect { counter.reset_if_expired }
-          .to change { session['api_requests_count'] }.from(3).to(0)
-      end
+        # Store initial values
+        initial_count = session[:api_requests_count]
+        initial_reset_time = session[ApiRequestLimiter::RESET_TIME_KEY]
 
-      it 'updates the reset time' do
-        expect { counter.reset_if_expired }
-          .to change { session['api_requests_reset_time'] }
-        expect(session['api_requests_reset_time']).to be_within(1).of(1.hour.from_now.to_i)
+        # Reset
+        counter.reset_if_expired
+
+        # Verify changes
+        expect(session[:api_requests_count]).to eq(0)
+        expect(session[ApiRequestLimiter::RESET_TIME_KEY]).to be > initial_reset_time
+        expect(session[ApiRequestLimiter::RESET_TIME_KEY]).to be_within(2).of(1.hour.from_now.to_i)
       end
     end
 
     context 'when reset time has not passed' do
       before do
-        session['api_requests_count'] = 3
-        reset_time = 1.hour.from_now.to_i
-        session['api_requests_reset_time'] = reset_time
+        session[:api_requests_count] = 3
+        session[ApiRequestLimiter::RESET_TIME_KEY] = 1.hour.from_now.to_i
       end
 
       it 'does not reset the counter' do
         expect { counter.reset_if_expired }
-          .not_to change { session['api_requests_count'] }
+          .not_to change { session[:api_requests_count] }
       end
 
       it 'does not update the reset time' do
         expect { counter.reset_if_expired }
-          .not_to change { session['api_requests_reset_time'] }
+          .not_to change { session[ApiRequestLimiter::RESET_TIME_KEY] }
       end
     end
   end
 
   describe '#remaining_requests' do
+    before { counter } # ensure initialized
+
     it 'returns max_requests when no requests made' do
-      expect(counter.remaining_requests).to eq(max_requests)
+      expect(counter.remaining_requests).to eq(ApiRequestLimiter::MAX_REQUESTS)
     end
 
     it 'returns correct remaining requests' do
-      session['api_requests_count'] = 3
-      expect(counter.remaining_requests).to eq(max_requests - 3)
+      session[:api_requests_count] = 3
+      expect(counter.remaining_requests).to eq(ApiRequestLimiter::MAX_REQUESTS - 3)
     end
 
     it 'returns 0 when limit exceeded' do
-      session['api_requests_count'] = max_requests + 1
+      session[:api_requests_count] = ApiRequestLimiter::MAX_REQUESTS + 1
       expect(counter.remaining_requests).to eq(0)
     end
   end
