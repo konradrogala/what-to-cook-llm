@@ -9,11 +9,11 @@ module Api
       end
 
       def increment
-        @session[:api_requests_count] = current_count + 1
+        session[:api_requests_count] = current_count + 1
       end
 
       def current_count
-        @session[:api_requests_count].to_i
+        session[:api_requests_count].to_i
       end
 
       def remaining_requests
@@ -27,22 +27,24 @@ module Api
 
       def reset_if_expired
         if reset_time_expired?
-          @session[:api_requests_count] = 0
-          @session[ApiRequestLimiter::RESET_TIME_KEY] = 1.hour.from_now.to_i
+          session[:api_requests_count] = 0
+          session[ApiRequestLimiter::RESET_TIME_KEY] = 1.hour.from_now.to_i
         end
       end
 
       private
 
+      attr_reader :session
+
       def reset_time_expired?
-        @session[ApiRequestLimiter::RESET_TIME_KEY].nil? ||
-          Time.now.to_i >= @session[ApiRequestLimiter::RESET_TIME_KEY]
+        session[ApiRequestLimiter::RESET_TIME_KEY].nil? ||
+          Time.now.to_i >= session[ApiRequestLimiter::RESET_TIME_KEY]
       end
 
       def ensure_initialized
-        if @session[:api_requests_count].nil?
-          @session[:api_requests_count] = 0
-          @session[ApiRequestLimiter::RESET_TIME_KEY] = 1.hour.from_now.to_i
+        if session[:api_requests_count].nil?
+          session[:api_requests_count] = 0
+          session[ApiRequestLimiter::RESET_TIME_KEY] = 1.hour.from_now.to_i
         end
       end
     end

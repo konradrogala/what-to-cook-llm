@@ -57,27 +57,43 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
     context "with invalid parameters" do
       it "returns error for empty ingredients" do
+        allow(Api::V1::RecipeGenerator).to receive(:perform)
+          .with("")
+          .and_raise(Api::V1::RecipeGenerator::GenerationError, "Invalid ingredients input: Input contains invalid characters")
+
         post :create, params: { ingredients: "" }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Invalid ingredients input: Input contains invalid characters")
       end
 
       it "returns error for empty array" do
+        allow(Api::V1::RecipeGenerator).to receive(:perform)
+          .with([])
+          .and_raise(Api::V1::RecipeGenerator::GenerationError, "Invalid ingredients input: Input contains invalid characters")
+
         post :create, params: { ingredients: [] }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Invalid ingredients input: Input contains invalid characters")
       end
 
       it "returns error for invalid input type" do
+        allow(Api::V1::RecipeGenerator).to receive(:perform)
+          .with({ name: "tomatoes" })
+          .and_raise(Api::V1::RecipeGenerator::GenerationError, "Invalid ingredients input: Invalid input type. Expected String or Array, got Hash")
+
         post :create, params: { ingredients: { name: "tomatoes" } }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Invalid ingredients format. Expected String or Array")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Invalid ingredients input: Invalid input type. Expected String or Array, got Hash")
       end
 
       it "returns error for missing ingredients" do
+        allow(Api::V1::RecipeGenerator).to receive(:perform)
+          .with(nil)
+          .and_raise(Api::V1::RecipeGenerator::GenerationError, "Invalid ingredients input: Invalid input type. Expected String or Array, got NilClass")
+
         post :create, params: {}
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Invalid ingredients input: Invalid input type. Expected String or Array, got NilClass")
       end
     end
 
@@ -109,13 +125,22 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
         expect(JSON.parse(response.body)["error"]).to eq("Failed to create recipe: Creation failed")
       end
 
-      it "handles unexpected errors" do
+      it "handles OpenAI rate limit errors" do
         allow(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(StandardError, "Unexpected error")
+          .and_raise(OpenAI::Error.new("rate limit exceeded"))
 
         post :create, params: { ingredients: valid_ingredients }
-        expect(response).to have_http_status(:internal_server_error)
-        expect(JSON.parse(response.body)["error"]).to eq("An unexpected error occurred")
+        expect(response).to have_http_status(:too_many_requests)
+        expect(JSON.parse(response.body)["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_rate_limit"))
+      end
+
+      it "handles other OpenAI errors" do
+        allow(Api::V1::RecipeGenerator).to receive(:perform)
+          .and_raise(OpenAI::Error.new("API error"))
+
+        post :create, params: { ingredients: valid_ingredients }
+        expect(response).to have_http_status(:service_unavailable)
+        expect(JSON.parse(response.body)["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_error", message: "API error"))
       end
     end
   end

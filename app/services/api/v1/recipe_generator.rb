@@ -23,7 +23,6 @@ module Api
 
       def check_feasibility!
         client = OpenAI::Client.new
-        Rails.logger.info "OpenAI client initialized"
 
         response = client.chat(
           parameters: {
@@ -38,8 +37,6 @@ module Api
             max_tokens: 10
           }
         )
-        Rails.logger.info "Successfully received response from OpenAI API"
-        Rails.logger.debug "Response: #{response.inspect}"
 
         feasible = response.dig("choices", 0, "message", "content")&.strip&.downcase == "yes"
         raise GenerationError, "These ingredients cannot make a coherent dish" unless feasible
@@ -51,7 +48,6 @@ module Api
 
       def generate_recipe
         client = OpenAI::Client.new
-        Rails.logger.info "OpenAI client initialized"
 
         response = client.chat(
           parameters: {
@@ -66,8 +62,6 @@ module Api
             max_tokens: 500
           }
         )
-        Rails.logger.info "Successfully received response from OpenAI API"
-        Rails.logger.debug "Response: #{response.inspect}"
 
         response.dig("choices", 0, "message", "content")
       rescue OpenAI::Error => e

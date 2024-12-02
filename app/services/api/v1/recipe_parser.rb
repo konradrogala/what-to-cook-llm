@@ -37,7 +37,6 @@ module Api
       def check_feasibility!(recipe_data)
         suggestions = Api::V1::RecipeFeasibilityChecker.perform(recipe_data)
         if suggestions.any?
-          Rails.logger.info "Recipe feasible with suggestions: #{suggestions}"
           recipe_data["suggestions"] = suggestions
         end
       rescue Api::V1::RecipeFeasibilityChecker::FeasibilityError => e

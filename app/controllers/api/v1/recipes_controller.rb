@@ -9,9 +9,7 @@ module Api
 
         return limit_exceeded_message(counter) if counter.limit_exceeded?
 
-        validate_ingredients!
         recipe = generate_recipe
-
         counter.increment
 
         is_limit_reached = counter.limit_exceeded?
@@ -48,16 +46,6 @@ module Api
           error: I18n.t("api.v1.recipes.errors.rate_limit"),
           remaining_requests: counter.remaining_requests
         }, status: :too_many_requests
-      end
-
-      def validate_ingredients!
-        if ingredients.blank? || ingredients.empty?
-          raise Api::V1::RecipeGenerator::GenerationError, I18n.t("api.v1.recipes.errors.empty_ingredients")
-        end
-
-        unless ingredients.is_a?(String) || ingredients.is_a?(Array)
-          raise Api::V1::RecipeGenerator::GenerationError, I18n.t("api.v1.recipes.errors.invalid_ingredients_format")
-        end
       end
 
       def ingredients
