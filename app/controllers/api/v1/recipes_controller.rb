@@ -5,7 +5,17 @@ module Api
 
       def create
         counter = Api::V1::RequestCounter.new(session)
+        counter.reset_if_expired
         Rails.logger.info "Current request count in controller: #{counter.current_count}"
+
+        # Check if limit is exceeded before processing
+        if counter.limit_exceeded?
+          render json: {
+            error: "Rate limit exceeded. Please try again later.",
+            remaining_requests: counter.remaining_requests
+          }, status: :too_many_requests
+          return
+        end
 
         validate_ingredients!
         recipe = generate_recipe
