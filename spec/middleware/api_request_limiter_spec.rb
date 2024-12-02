@@ -12,24 +12,51 @@ RSpec.describe ApiRequestLimiter do
     }
   end
   let(:session) { {} }
+  let(:counter) { instance_double(Api::V1::RequestCounter) }
+
+  before do
+    allow(Api::V1::RequestCounter).to receive(:new).with(session).and_return(counter)
+    allow(counter).to receive(:reset_if_expired)
+    allow(counter).to receive(:current_count)
+  end
 
   describe "#call" do
     context "when under the request limit" do
-      let(:session) { { api_requests_count: 2 } }
+      before do
+        allow(counter).to receive(:limit_exceeded?).and_return(false)
+      end
 
-      it "allows the request and increases the counter" do
+      it "allows the request" do
         status, _, _ = middleware.call(env)
         expect(status).to eq(201)
-        expect(session[:api_requests_count]).to eq(3)
+      end
+
+      it "checks and resets the counter if expired" do
+        middleware.call(env)
+        expect(counter).to have_received(:reset_if_expired)
       end
     end
 
     context "when at the request limit" do
-      let(:session) { { api_requests_count: 5 } }
+      before do
+        allow(counter).to receive(:limit_exceeded?).and_return(true)
+      end
 
       it "blocks the request" do
         status, _, _ = middleware.call(env)
         expect(status).to eq(429)
+      end
+
+      it "includes rate limit information in the response" do
+        reset_time = 1.hour.from_now.to_i
+        session[described_class::RESET_TIME_KEY] = reset_time
+        _, _, response = middleware.call(env)
+        json_response = JSON.parse(response.first)
+
+        expect(json_response["error"]).to include("Rate limit exceeded")
+        expect(json_response["remaining_requests"]).to eq(0)
+        expect(json_response["reset_in_minutes"]).to be_present
+        expect(json_response["message"]).to include("Please try again")
       end
     end
 
@@ -45,15 +72,19 @@ RSpec.describe ApiRequestLimiter do
       it "skips the middleware" do
         status, _, _ = middleware.call(env)
         expect(status).to eq(201)
-        expect(session[:api_requests_count]).to be_nil
+        expect(Api::V1::RequestCounter).not_to have_received(:new)
       end
     end
 
-    context "when session is new" do
-      it "initializes the counter to 1 after first request" do
+    context "when request becomes rate limited after processing" do
+      before do
+        # First check passes
+        allow(counter).to receive(:limit_exceeded?).and_return(false, true)
+      end
+
+      it "blocks the request" do
         status, _, _ = middleware.call(env)
-        expect(status).to eq(201)
-        expect(session[:api_requests_count]).to eq(1)
+        expect(status).to eq(429)
       end
     end
   end

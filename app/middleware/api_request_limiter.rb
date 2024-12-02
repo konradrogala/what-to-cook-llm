@@ -22,6 +22,7 @@ class ApiRequestLimiter
 
     if counter.limit_exceeded?
       Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded"
+      ensure_reset_time(request.session)
       return rate_limit_response(request.session[RESET_TIME_KEY])
     end
 
@@ -31,6 +32,7 @@ class ApiRequestLimiter
     # Check if the count has been incremented and now exceeds the limit
     if counter.limit_exceeded?
       Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded after request"
+      ensure_reset_time(request.session)
       return rate_limit_response(request.session[RESET_TIME_KEY])
     end
 
@@ -66,5 +68,9 @@ class ApiRequestLimiter
         message: "Please try again in #{minutes_until_reset} #{'minute'.pluralize(minutes_until_reset)}"
       }.to_json ]
     ]
+  end
+
+  def ensure_reset_time(session)
+    session[RESET_TIME_KEY] ||= 1.hour.from_now.to_i
   end
 end
