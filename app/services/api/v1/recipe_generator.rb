@@ -7,12 +7,11 @@ module Api
       class GenerationError < StandardError; end
 
       def initialize(ingredients)
-        @ingredients = sanitize_input(ingredients)
-      rescue InputError => e
-        raise GenerationError, "Invalid ingredients input: #{e.message}"
+        @ingredients = ingredients
       end
 
       def perform
+        validate_ingredients!
         check_feasibility!
         generate_recipe
       end
@@ -20,6 +19,19 @@ module Api
       private
 
       attr_reader :ingredients
+
+      def validate_ingredients!
+        @ingredients = sanitize_input(ingredients)
+      rescue InputError => e
+        case ingredients
+        when String
+          raise GenerationError, "Ingredients cannot be empty" if ingredients.strip.empty?
+        when Array
+          raise GenerationError, "Ingredients cannot be empty" if ingredients.empty?
+        else
+          raise GenerationError, "Invalid ingredients format. Expected String or Array"
+        end
+      end
 
       def check_feasibility!
         client = OpenAI::Client.new

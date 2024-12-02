@@ -30,7 +30,7 @@ RSpec.describe "Api::V1::Recipes", type: :request do
     end
 
     before do
-      allow(Api::V1::RecipeGenerator).to receive(:perform).and_return(valid_json_response)
+      allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform).and_return(valid_json_response)
       allow(Api::V1::RecipeParser).to receive(:perform).and_return(valid_recipe_attributes)
       allow(Api::V1::RecipeCreator).to receive(:perform).and_return(valid_recipe)
     end
@@ -77,26 +77,58 @@ RSpec.describe "Api::V1::Recipes", type: :request do
     end
 
     context "when ingredients are missing" do
-      before { setup_api_session }
+      before do
+        setup_api_session
+        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
+          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Ingredients cannot be empty"))
+      end
 
       it "returns an error" do
         post "/api/v1/recipes", params: {}, as: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
+        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Ingredients cannot be empty"))
         expect(json_response["remaining_requests"]).to eq(5)
       end
     end
 
     context "when ingredients have invalid format" do
-      before { setup_api_session }
+      before do
+        setup_api_session
+        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
+          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Invalid ingredients format. Expected String or Array"))
+      end
 
       it "returns an error" do
         post "/api/v1/recipes", params: { ingredients: { invalid: "format" } }, as: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["error"]).to eq("Failed to generate recipe: Invalid ingredients format. Expected String or Array")
+        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Invalid ingredients format. Expected String or Array"))
         expect(json_response["remaining_requests"]).to eq(5)
+      end
+    end
+
+    context "when OpenAI API fails" do
+      before { setup_api_session }
+
+      it "handles rate limit errors" do
+        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
+          .and_raise(OpenAI::Error.new("rate limit exceeded"))
+
+        post "/api/v1/recipes", params: valid_params, as: :json
+
+        expect(response).to have_http_status(:too_many_requests)
+        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_rate_limit"))
+      end
+
+      it "handles other API errors" do
+        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
+          .and_raise(OpenAI::Error.new("API error"))
+
+        post "/api/v1/recipes", params: valid_params, as: :json
+
+        expect(response).to have_http_status(:service_unavailable)
+        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_error", message: "API error"))
       end
     end
   end

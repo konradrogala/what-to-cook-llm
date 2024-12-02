@@ -9,8 +9,10 @@ module InputSanitizer
   def sanitize_input(input)
     case input
     when String
+      raise InputError, "Ingredients cannot be empty" if input.strip.empty?
       sanitize_string(input)
     when Array
+      raise InputError, "Ingredients cannot be empty" if input.empty?
       input.map { |item| sanitize_string(item.to_s) }
     else
       raise InputError, "Invalid input type. Expected String or Array, got #{input.class}"
