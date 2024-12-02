@@ -31,11 +31,17 @@ class ApiRequestLimiter
       # If the response was successful, modify it to include rate limit info
       if status == 201 || status == 200
         begin
-          # Convert response body to string and parse JSON
-          response_body = response.respond_to?(:body) ? response.body : response[0]
-          response_body = response_body.respond_to?(:first) ? response_body.first : response_body
-          body = JSON.parse(response_body)
+          # Handle different response body formats
+          response_body = case response
+                         when Array
+                           response.first.to_s
+                         when Rack::BodyProxy
+                           response.each.to_a.join
+                         else
+                           response.to_s
+                         end
 
+          body = JSON.parse(response_body)
           body["limit_reached"] = true
           body["message"] = "You have reached the maximum number of requests for this session."
           body["remaining_requests"] = 0
