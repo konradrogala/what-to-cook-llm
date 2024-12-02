@@ -6,8 +6,8 @@ RSpec.describe RecipeSerializer do
   let(:recipe) do
     Recipe.new(
       title: "Test Recipe",
-      ingredients: ["ingredient1", "ingredient2"],
-      instructions: ["step1", "step2"]
+      ingredients: "ingredient1\ningredient2",
+      instructions: "step1\nstep2"
     )
   end
 
