@@ -1,0 +1,22 @@
+You need to create a web application that generates a step-by-step recipe for a dish
+based on the provided ingredients. The recipe should be generated using an LLM, so a
+cookbook is not necessary :)
+This task should be implemented using Ruby; however, you are not required to use Rails.
+You are free to choose the tools you prefer. We will evaluate your code based on its
+readability and ease of maintenance. We want to see code that reveals its intent to the
+reader and follows the best practices.
+You need to ensure that the code works and use any tools or techniques to accomplish
+this. We are expecting to see a couple of unit tests covering your code as well.
+Specifications:
+● Create a page where user can input ingredients
+● Back-end receives the ingredients and query LLM to generate a recipe based on
+them (there are free APIs that you can use https://www.anthropic.com/ or
+https://groq.com/)
+● The recipe should be displayed on the page where you entered the ingredients.
+Implementation requirements:
+● The front-end should only communicate with the back-end using APIs. You can
+choose whatever is good for you, Native JS, jQuery, React, Vue, etc.
+● The back-end should be Ruby but not necessarily Rails
+● Tests are required
+Nice to have but not required:
+Validate the output from the LLM to confirm that the text it returned is indeed a recipe.
