@@ -4,30 +4,30 @@ module Api
       extend ActiveSupport::Concern
 
       included do
+        rescue_from StandardError do |e|
+          Rails.logger.error "Unexpected error: #{e.message}"
+          Rails.logger.error e.backtrace.join("\n")
+          render_error("An unexpected error occurred", :internal_server_error)
+        end
+
         rescue_from OpenAI::Error do |e|
           if e.message.include?("rate limit")
-            render_error("API rate limit exceeded. Please try again in about an hour", :too_many_requests)
+            render_error("API rate limit exceeded", :too_many_requests)
           else
             render_error("OpenAI API error: #{e.message}", :service_unavailable)
           end
         end
 
         rescue_from Api::V1::RecipeGenerator::GenerationError do |e|
-          render_error(e.message || "Failed to generate recipe", :unprocessable_entity)
+          render_error("Failed to generate recipe: #{e.message}", :unprocessable_entity)
         end
 
         rescue_from Api::V1::RecipeParser::ParsingError do |e|
-          render_error(e.message || "Failed to parse recipe", :unprocessable_entity)
+          render_error("Failed to parse recipe: #{e.message}", :unprocessable_entity)
         end
 
         rescue_from Api::V1::RecipeCreator::CreationError do |e|
-          render_error(e.message || "Failed to create recipe", :unprocessable_entity)
-        end
-
-        rescue_from StandardError do |e|
-          Rails.logger.error "Unexpected error: #{e.message}"
-          Rails.logger.error e.backtrace.join("\n")
-          render_error("An unexpected error occurred", :internal_server_error)
+          render_error("Failed to create recipe: #{e.message}", :unprocessable_entity)
         end
       end
 
