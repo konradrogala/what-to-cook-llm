@@ -1,11 +1,11 @@
 require 'rails_helper'
 
 RSpec.describe ApiRequestLimiter do
-  let(:app) { ->(env) { [status, headers, response] } }
+  let(:app) { ->(env) { [ status, headers, response ] } }
   let(:middleware) { described_class.new(app) }
   let(:status) { 201 }
   let(:headers) { { 'Content-Type' => 'application/json' } }
-  let(:response) { [{ 'recipe' => 'test' }.to_json] }
+  let(:response) { [ { 'recipe' => 'test' }.to_json ] }
   let(:env) do
     {
       'REQUEST_PATH' => '/api/v1/recipes',
@@ -44,12 +44,12 @@ RSpec.describe ApiRequestLimiter do
           let(:status) { 201 }
 
           context 'with standard Array response' do
-            let(:response) { [{ 'recipe' => 'test' }.to_json] }
+            let(:response) { [ { 'recipe' => 'test' }.to_json ] }
 
             it 'modifies the response to include limit info' do
               _, _, modified_response = middleware.call(env)
               body = JSON.parse(modified_response[0])
-              
+
               expect(body).to include(
                 'recipe' => 'test',
                 'limit_reached' => true,
@@ -61,14 +61,14 @@ RSpec.describe ApiRequestLimiter do
 
           context 'with Rack::BodyProxy response' do
             let(:response) do
-              body = [{ 'recipe' => 'test' }.to_json]
+              body = [ { 'recipe' => 'test' }.to_json ]
               Rack::BodyProxy.new(body) { }
             end
 
             it 'modifies the response to include limit info' do
               _, _, modified_response = middleware.call(env)
               body = JSON.parse(modified_response[0])
-              
+
               expect(body).to include(
                 'recipe' => 'test',
                 'limit_reached' => true,
@@ -81,7 +81,7 @@ RSpec.describe ApiRequestLimiter do
 
         context 'with error response' do
           let(:status) { 422 }
-          let(:response) { [{ 'error' => 'Invalid request' }.to_json] }
+          let(:response) { [ { 'error' => 'Invalid request' }.to_json ] }
 
           it 'does not modify error responses' do
             _, _, response = middleware.call(env)
@@ -90,7 +90,7 @@ RSpec.describe ApiRequestLimiter do
         end
 
         context 'with unparseable response' do
-          let(:response) { ['Invalid JSON'] }
+          let(:response) { [ 'Invalid JSON' ] }
 
           it 'returns original response on parse error' do
             _, _, response = middleware.call(env)
