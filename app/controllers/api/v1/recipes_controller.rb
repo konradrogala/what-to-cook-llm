@@ -4,14 +4,28 @@ module Api
       include Api::V1::ErrorHandler
 
       def create
-        Rails.logger.info "Current request count in controller: #{session[:api_requests_count]}"
+        counter = Api::V1::RequestCounter.new(session)
+        Rails.logger.info "Current request count in controller: #{counter.current_count}"
+
+        # Check if we've exceeded the limit before processing
+        if counter.limit_exceeded?
+          Rails.logger.warn "Rate limit exceeded in controller"
+          return render_error(
+            "Rate limit exceeded. Maximum #{ApiRequestLimiter::MAX_REQUESTS} requests per hour allowed.",
+            :too_many_requests
+          )
+        end
 
         validate_ingredients!
         recipe = generate_recipe
 
+        # Increment counter after successful request
+        counter.increment
+        Rails.logger.info "Incremented count to: #{counter.current_count}"
+
         render json: {
           recipe: recipe,
-          remaining_requests: remaining_requests
+          remaining_requests: counter.remaining_requests
         }, status: :created
       rescue OpenAI::Error => e
         if e.message.include?("rate limit")
@@ -35,13 +49,11 @@ module Api
 
       def validate_ingredients!
         if ingredients.blank? || ingredients.empty?
-          render_error("Ingredients cannot be empty", :unprocessable_entity)
-          return
+          raise Api::V1::RecipeGenerator::GenerationError, "Ingredients cannot be empty"
         end
 
         unless ingredients.is_a?(String) || ingredients.is_a?(Array)
-          render_error("Invalid ingredients format. Expected String or Array", :unprocessable_entity)
-          nil
+          raise Api::V1::RecipeGenerator::GenerationError, "Invalid ingredients format. Expected String or Array"
         end
       end
 
@@ -53,10 +65,6 @@ module Api
 
       def ingredients
         @ingredients ||= params[:ingredients]
-      end
-
-      def remaining_requests
-        ApiRequestLimiter::MAX_REQUESTS - session[:api_requests_count].to_i
       end
     end
   end

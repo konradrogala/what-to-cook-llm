@@ -38,68 +38,41 @@ RSpec.describe "Api::V1::Recipes", type: :request do
     context "when tracking request counts" do
       before { setup_api_session }
 
-      it "increments request count for successful request" do
-        # First request
+      it "decrements remaining requests after each request" do
         post "/api/v1/recipes", params: valid_params, as: :json
         expect(response).to have_http_status(:created)
-        expect(json_response["remaining_requests"]).to eq(5)
+        expect(json_response["remaining_requests"]).to eq(4)
 
-        # Second request
         post "/api/v1/recipes", params: valid_params, as: :json
         expect(response).to have_http_status(:created)
-        expect(json_response["remaining_requests"]).to eq(5)
+        expect(json_response["remaining_requests"]).to eq(3)
       end
 
-      it "increments request count for failed requests" do
-        # Failed request
-        post "/api/v1/recipes", params: { ingredients: [] }, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["remaining_requests"]).to eq(5)
-
-        # Another failed request
-        post "/api/v1/recipes", params: { ingredients: [] }, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["remaining_requests"]).to eq(5)
-      end
-
-      it "blocks requests when limit is reached" do
-        # Exhaust the limit
+      it "blocks requests after reaching the limit" do
+        # Make 5 requests to reach the limit (starting from 1)
         5.times do
           post "/api/v1/recipes", params: valid_params, as: :json
-          expect(response).to have_http_status(:created)
         end
 
-        # Try one more request
+        # This should be blocked
         post "/api/v1/recipes", params: valid_params, as: :json
-        expect(response).to have_http_status(429)
+        expect(response).to have_http_status(:too_many_requests)
         expect(json_response["error"]).to include("Rate limit exceeded")
+        expect(json_response["remaining_requests"]).to eq(0)
       end
     end
 
-    context "when the request is successful" do
+    context "when request is successful" do
       before { setup_api_session }
 
-      it "returns the created recipe and remaining requests" do
+      it "returns the recipe with remaining requests" do
         post "/api/v1/recipes", params: valid_params, as: :json
 
         expect(response).to have_http_status(:created)
-        expect(json_response["recipe"]).to include(
-          "title" => "Test Recipe",
-          "ingredients" => [ "tomato", "pasta" ],
-          "instructions" => [ "Step 1", "Step 2" ]
-        )
-        expect(json_response["remaining_requests"]).to eq(5)
-      end
-    end
-
-    context "when ingredients are empty" do
-      before { setup_api_session }
-
-      it "returns an error" do
-        post "/api/v1/recipes", params: { ingredients: [] }, as: :json
-
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["error"]).to eq("Ingredients cannot be empty")
+        expect(json_response["recipe"]["title"]).to eq("Test Recipe")
+        expect(json_response["recipe"]["ingredients"]).to eq(["tomato", "pasta"])
+        expect(json_response["recipe"]["instructions"]).to eq(["Step 1", "Step 2"])
+        expect(json_response["remaining_requests"]).to eq(4)
       end
     end
 
@@ -110,7 +83,20 @@ RSpec.describe "Api::V1::Recipes", type: :request do
         post "/api/v1/recipes", params: {}, as: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["error"]).to eq("Ingredients cannot be empty")
+        expect(json_response["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
+        expect(json_response["remaining_requests"]).to eq(5)
+      end
+    end
+
+    context "when ingredients have invalid format" do
+      before { setup_api_session }
+
+      it "returns an error" do
+        post "/api/v1/recipes", params: { ingredients: { invalid: "format" } }, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(json_response["error"]).to eq("Failed to generate recipe: Invalid ingredients format. Expected String or Array")
+        expect(json_response["remaining_requests"]).to eq(5)
       end
     end
   end

@@ -34,9 +34,10 @@ module Api
       private
 
       def render_error(message, status)
+        counter = Api::V1::RequestCounter.new(session)
         response = {
           error: message,
-          remaining_requests: remaining_requests
+          remaining_requests: counter.remaining_requests
         }
 
         # Add reset time information for rate limit errors
