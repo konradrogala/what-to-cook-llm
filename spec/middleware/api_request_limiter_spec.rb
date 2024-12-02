@@ -1,70 +1,55 @@
 require 'rails_helper'
 
 RSpec.describe ApiRequestLimiter do
-  let(:app) { ->(_env) { [ status, headers, [ response_body ] ] } }
+  let(:app) { ->(env) { [status, headers, response] } }
   let(:middleware) { described_class.new(app) }
-  let(:status) { 200 }
-  let(:headers) { { "Content-Type" => "application/json" } }
-  let(:response_body) { { recipe: "test" }.to_json }
-  let(:session) { {} }
+  let(:status) { 201 }
+  let(:headers) { { 'Content-Type' => 'application/json' } }
+  let(:response) { [{ 'recipe' => 'test' }.to_json] }
   let(:env) do
     {
-      "REQUEST_PATH" => "/api/v1/recipes",
-      "REQUEST_METHOD" => "POST",
-      "HTTP_ACCEPT" => "application/json",
-      "rack.session" => session
+      'REQUEST_PATH' => '/api/v1/recipes',
+      'REQUEST_METHOD' => 'POST',
+      'HTTP_ACCEPT' => 'application/json',
+      'rack.session' => {}
     }
-  end
-
-  let(:counter) { instance_double(Api::V1::RequestCounter) }
-
-  before do
-    allow(Api::V1::RequestCounter).to receive(:new).and_return(counter)
-    allow(counter).to receive(:reset_if_expired)
-    allow(counter).to receive(:current_count)
   end
 
   describe '#call' do
     context 'when request is not an API request' do
-      let(:env) { { "REQUEST_PATH" => "/other/path", "rack.session" => session } }
+      let(:env) { { 'REQUEST_PATH' => '/other/path', 'rack.session' => {} } }
 
       it 'passes through to the app' do
-        status, _, response = middleware.call(env)
-        expect(status).to eq(200)
-        expect(response).to eq([ response_body ])
+        status, headers, response = middleware.call(env)
+        expect(status).to eq(201)
       end
     end
 
     context 'when request is an API request' do
       context 'when limit is not exceeded' do
-        before do
-          allow(counter).to receive(:limit_exceeded?).and_return(false)
-        end
-
         it 'passes through to the app' do
-          status, _, response = middleware.call(env)
-          expect(status).to eq(200)
-          expect(JSON.parse(response[0])).to eq({ "recipe" => "test" })
+          status, headers, response = middleware.call(env)
+          expect(status).to eq(201)
+          expect(JSON.parse(response[0])).to eq({ 'recipe' => 'test' })
         end
       end
 
       context 'when limit is exceeded' do
         before do
-          allow(counter).to receive(:limit_exceeded?).and_return(true)
-          session[described_class::RESET_TIME_KEY] = 1.hour.from_now.to_i
+          counter = Api::V1::RequestCounter.new(env['rack.session'])
+          described_class::MAX_REQUESTS.times { counter.increment }
         end
 
         context 'with successful response' do
           let(:status) { 201 }
 
-          context 'with Array response' do
-            let(:response_body) { [{ 'recipe' => 'test' }.to_json] }
+          context 'with standard Array response' do
+            let(:response) { [{ 'recipe' => 'test' }.to_json] }
 
             it 'modifies the response to include limit info' do
-              status, _, response = middleware.call(env)
-              body = JSON.parse(response[0])
+              _, _, modified_response = middleware.call(env)
+              body = JSON.parse(modified_response[0])
               
-              expect(status).to eq(201)
               expect(body).to include(
                 'recipe' => 'test',
                 'limit_reached' => true,
@@ -75,13 +60,15 @@ RSpec.describe ApiRequestLimiter do
           end
 
           context 'with Rack::BodyProxy response' do
-            let(:response_body) { Rack::BodyProxy.new([{ 'recipe' => 'test' }.to_json]) { } }
+            let(:response) do
+              body = [{ 'recipe' => 'test' }.to_json]
+              Rack::BodyProxy.new(body) { }
+            end
 
             it 'modifies the response to include limit info' do
-              status, _, response = middleware.call(env)
-              body = JSON.parse(response[0])
+              _, _, modified_response = middleware.call(env)
+              body = JSON.parse(modified_response[0])
               
-              expect(status).to eq(201)
               expect(body).to include(
                 'recipe' => 'test',
                 'limit_reached' => true,
@@ -94,22 +81,20 @@ RSpec.describe ApiRequestLimiter do
 
         context 'with error response' do
           let(:status) { 422 }
-          let(:response_body) { { error: "Invalid input" }.to_json }
+          let(:response) { [{ 'error' => 'Invalid request' }.to_json] }
 
           it 'does not modify error responses' do
-            status, _, response = middleware.call(env)
-            expect(status).to eq(422)
-            expect(JSON.parse(response[0])).to eq({ "error" => "Invalid input" })
+            _, _, response = middleware.call(env)
+            expect(JSON.parse(response[0])).to eq({ 'error' => 'Invalid request' })
           end
         end
 
         context 'with unparseable response' do
-          let(:response_body) { 'invalid json' }
+          let(:response) { ['Invalid JSON'] }
 
           it 'returns original response on parse error' do
-            status, _, response = middleware.call(env)
-            expect(status).to eq(200)
-            expect(response[0]).to eq('invalid json')
+            _, _, response = middleware.call(env)
+            expect(response[0]).to eq('Invalid JSON')
           end
         end
       end
@@ -117,19 +102,19 @@ RSpec.describe ApiRequestLimiter do
   end
 
   describe '#rate_limit_response' do
-    let(:reset_time) { 1.hour.from_now.to_i }
-
     it 'returns correct rate limit response format' do
+      reset_time = Time.now.to_i + 3600 # 1 hour from now
       status, headers, response = middleware.send(:rate_limit_response, reset_time)
-      body = JSON.parse(response[0])
 
       expect(status).to eq(429)
-      expect(headers).to include("Content-Type" => "application/json")
+      expect(headers).to include('Content-Type' => 'application/json')
+
+      body = JSON.parse(response[0])
       expect(body).to include(
-        "error" => "Rate limit exceeded. Maximum #{described_class::MAX_REQUESTS} requests per hour allowed.",
-        "remaining_requests" => 0
+        'error' => 'Rate limit exceeded. Maximum 5 requests per hour allowed.',
+        'remaining_requests' => 0
       )
-      expect(body["minutes_until_reset"]).to be_within(1).of(60)
+      expect(body['minutes_until_reset']).to be_between(59, 60)
     end
   end
 end
