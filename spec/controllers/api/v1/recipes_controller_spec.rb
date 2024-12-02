@@ -59,25 +59,25 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       it "returns error for empty ingredients" do
         post :create, params: { ingredients: "" }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Ingredients cannot be empty")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
       end
 
       it "returns error for empty array" do
         post :create, params: { ingredients: [] }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Ingredients cannot be empty")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
       end
 
       it "returns error for invalid input type" do
         post :create, params: { ingredients: { name: "tomatoes" } }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Invalid ingredients format. Expected String or Array")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Invalid ingredients format. Expected String or Array")
       end
 
       it "returns error for missing ingredients" do
         post :create, params: {}
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Ingredients cannot be empty")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Ingredients cannot be empty")
       end
     end
 
@@ -88,7 +88,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to generate recipe: Generation failed")
       end
 
       it "handles RecipeParser errors" do
@@ -97,7 +97,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to parse recipe")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to parse recipe: Parsing failed")
       end
 
       it "handles RecipeCreator errors" do
@@ -106,7 +106,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)["error"]).to eq("Failed to create recipe")
+        expect(JSON.parse(response.body)["error"]).to eq("Failed to create recipe: Creation failed")
       end
 
       it "handles unexpected errors" do
