@@ -70,8 +70,8 @@ RSpec.describe "Api::V1::Recipes", type: :request do
 
         expect(response).to have_http_status(:created)
         expect(json_response["recipe"]["title"]).to eq("Test Recipe")
-        expect(json_response["recipe"]["ingredients"]).to eq(["tomato", "pasta"])
-        expect(json_response["recipe"]["instructions"]).to eq(["Step 1", "Step 2"])
+        expect(json_response["recipe"]["ingredients"]).to eq([ "tomato", "pasta" ])
+        expect(json_response["recipe"]["instructions"]).to eq([ "Step 1", "Step 2" ])
         expect(json_response["remaining_requests"]).to eq(4)
       end
     end

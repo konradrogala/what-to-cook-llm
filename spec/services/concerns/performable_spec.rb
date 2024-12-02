@@ -29,13 +29,13 @@ RSpec.describe Performable do
           end
 
           def perform
-            [@arg1, @arg2]
+            [ @arg1, @arg2 ]
           end
         end
       end
 
       it "passes arguments to initialize" do
-        expect(test_class_with_args.perform("value1", "value2")).to eq(["value1", "value2"])
+        expect(test_class_with_args.perform("value1", "value2")).to eq([ "value1", "value2" ])
       end
     end
   end

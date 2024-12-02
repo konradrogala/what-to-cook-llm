@@ -18,11 +18,11 @@ RSpec.describe RecipeSerializer do
   end
 
   it "serializes the recipe ingredients" do
-    expect(serialized_recipe[:ingredients]).to eq(["ingredient1", "ingredient2"])
+    expect(serialized_recipe[:ingredients]).to eq([ "ingredient1", "ingredient2" ])
   end
 
   it "serializes the recipe instructions" do
-    expect(serialized_recipe[:instructions]).to eq(["step1", "step2"])
+    expect(serialized_recipe[:instructions]).to eq([ "step1", "step2" ])
   end
 
   it "includes created_at timestamp" do

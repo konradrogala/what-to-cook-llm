@@ -18,7 +18,7 @@ module Api
 
       def remaining_requests
         max_remaining = ApiRequestLimiter::MAX_REQUESTS - current_count
-        [max_remaining, 0].max
+        [ max_remaining, 0 ].max
       end
 
       def limit_exceeded?

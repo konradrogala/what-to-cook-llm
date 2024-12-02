@@ -17,8 +17,8 @@ module ApiHelpers
   def valid_recipe_json
     {
       title: "Delicious Recipe",
-      ingredients: ["ingredient1", "ingredient2"],
-      instructions: ["step1", "step2"],
+      ingredients: [ "ingredient1", "ingredient2" ],
+      instructions: [ "step1", "step2" ],
       cooking_time: "30 minutes",
       servings: 4,
       difficulty: "medium"
@@ -28,8 +28,8 @@ module ApiHelpers
   def valid_recipe_attributes
     {
       title: "Delicious Recipe",
-      ingredients: ["ingredient1", "ingredient2"],
-      instructions: ["step1", "step2"],
+      ingredients: [ "ingredient1", "ingredient2" ],
+      instructions: [ "step1", "step2" ],
       cooking_time: "30 minutes",
       servings: 4,
       difficulty: "medium"
