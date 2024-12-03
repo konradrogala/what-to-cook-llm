@@ -41,6 +41,7 @@ en:
           recipe_generation: "Failed to generate recipe: %{message}"
           recipe_parsing: "Failed to parse recipe: %{message}"
           recipe_creation: "Failed to create recipe: %{message}"
+          ingredients_processing: "Failed to process ingredients: %{message}"
           unexpected: "An unexpected error occurred"
         messages:
           limit_reached: "You have reached the maximum number of requests for this session."

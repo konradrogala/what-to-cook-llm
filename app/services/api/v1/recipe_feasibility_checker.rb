@@ -4,7 +4,6 @@ module Api
       include Performable
 
       class FeasibilityError < StandardError; end
-      class RateLimitError < StandardError; end
 
       def initialize(recipe_data)
         @recipe_data = recipe_data
@@ -23,7 +22,6 @@ module Api
 
       def check_feasibility
         client = OpenAI::Client.new
-        Rails.logger.info "Checking recipe feasibility with OpenAI"
 
         response = client.chat(
           parameters: {
@@ -32,15 +30,12 @@ module Api
             response_format: { type: "json_object" }
           }
         )
-        Rails.logger.info "Received feasibility check response from OpenAI"
-        Rails.logger.debug "Response: #{response.inspect}"
 
         response.dig("choices", 0, "message", "content")
       end
 
       def process_response(response)
         result = JSON.parse(response)
-        Rails.logger.info "Feasibility check result: #{result.inspect}"
 
         unless result["is_feasible"]
           issues = result["issues"].join(", ")

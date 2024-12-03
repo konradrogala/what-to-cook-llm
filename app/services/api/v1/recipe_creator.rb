@@ -4,7 +4,6 @@ module Api
       include Performable
 
       class CreationError < StandardError; end
-      class ValidationError < StandardError; end
 
       def initialize(recipe_attributes)
         @recipe_attributes = recipe_attributes
@@ -15,7 +14,6 @@ module Api
         recipe = Recipe.new(prepare_attributes)
 
         if recipe.save
-          Rails.logger.info "Recipe saved successfully"
           recipe
         else
           Rails.logger.error "Failed to save recipe: #{recipe.errors.full_messages.join(', ')}"
@@ -25,9 +23,11 @@ module Api
 
       private
 
+      attr_reader :recipe_attributes
+
       def validate_attributes!
         if recipe_attributes.blank? || !recipe_attributes.is_a?(Hash)
-          raise ValidationError, "Invalid recipe attributes"
+          raise CreationError, "Invalid recipe attributes"
         end
       end
 
@@ -38,8 +38,6 @@ module Api
           instructions: Array(recipe_attributes[:instructions]).join("\n")
         }
       end
-
-      attr_reader :recipe_attributes
     end
   end
 end
