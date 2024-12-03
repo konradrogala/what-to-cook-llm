@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe Api::V1::RecipesController, type: :controller do
   describe "POST #create" do
-    let(:valid_ingredients) { "tomatoes, pasta" }
+    let(:valid_ingredients) { [ "tomatoes", "pasta" ] }
     let(:valid_json_response) do
       {
         title: "Pasta",
@@ -35,12 +35,12 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
     context "with valid parameters" do
       it "creates a new recipe" do
-        post :create, params: { ingredients: valid_ingredients }
+        post :create, params: { ingredients: "tomatoes, pasta" }
         expect(response).to have_http_status(:created)
       end
 
       it "returns recipe and remaining requests" do
-        post :create, params: { ingredients: valid_ingredients }
+        post :create, params: { ingredients: "tomatoes, pasta" }
         expect(response).to have_http_status(:created)
         expect(json_response["recipe"]).to include(
           "title" => "Pasta",
@@ -93,9 +93,9 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
     context "when recipe generation fails" do
       it "handles RecipeGenerator errors" do
         allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(Api::V1::RecipeGenerator::GenerationError, "Generation failed")
+          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Generation failed"))
 
-        post :create, params: { ingredients: valid_ingredients }
+        post :create, params: { ingredients: "tomatoes, pasta" }
         expect(response).to have_http_status(:unprocessable_entity)
         expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Generation failed"))
       end
@@ -104,7 +104,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
         allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
           .and_raise(OpenAI::Error.new("rate limit exceeded"))
 
-        post :create, params: { ingredients: valid_ingredients }
+        post :create, params: { ingredients: "tomatoes, pasta" }
         expect(response).to have_http_status(:too_many_requests)
         expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_rate_limit"))
       end
@@ -113,7 +113,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
         allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
           .and_raise(OpenAI::Error.new("other error"))
 
-        post :create, params: { ingredients: valid_ingredients }
+        post :create, params: { ingredients: "tomatoes, pasta" }
         expect(response).to have_http_status(:service_unavailable)
         expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_error", message: "other error"))
       end

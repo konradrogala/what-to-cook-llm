@@ -2,6 +2,7 @@ module Api
   module V1
     class IngredientsProcessor
       include Performable
+      include ActionView::Helpers::SanitizeHelper
 
       class ProcessingError < StandardError; end
 
@@ -18,7 +19,7 @@ module Api
       attr_reader :ingredients
 
       def process_ingredients
-        case ingredients
+        ingredients_array = case ingredients
         when String
           ingredients.split(",").map(&:strip)
         when Array
@@ -26,6 +27,8 @@ module Api
         else
           raise ProcessingError, "Invalid ingredients format. Expected String or Array"
         end
+
+        ingredients_array.map { |ingredient| sanitize(ingredient, tags: [], attributes: []) }
       end
     end
   end
