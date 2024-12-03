@@ -10,12 +10,7 @@ module Api
       end
 
       def perform
-        Rails.logger.info "Processing ingredients: #{ingredients.inspect}"
-
-        processed = process_ingredients
-        Rails.logger.info "Processed ingredients: #{processed.inspect}"
-
-        processed
+        process_ingredients
       end
 
       private

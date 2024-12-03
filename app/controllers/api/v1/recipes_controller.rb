@@ -4,8 +4,6 @@ module Api
       include Api::V1::ErrorHandler
 
       def create
-        Rails.logger.info "Received parameters: #{params.inspect}"
-
         counter = Api::V1::RequestCounter.new(session)
         counter.reset_if_expired
 
