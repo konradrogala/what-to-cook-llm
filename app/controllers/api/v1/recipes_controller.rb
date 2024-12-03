@@ -4,6 +4,8 @@ module Api
       include Api::V1::ErrorHandler
 
       def create
+        Rails.logger.info "Received parameters: #{params.inspect}"
+        
         counter = Api::V1::RequestCounter.new(session)
         counter.reset_if_expired
 
@@ -33,6 +35,8 @@ module Api
         render_error(I18n.t("api.v1.recipes.errors.recipe_parsing", message: e.message), :unprocessable_entity)
       rescue Api::V1::RecipeCreator::CreationError => e
         render_error(I18n.t("api.v1.recipes.errors.recipe_creation", message: e.message), :unprocessable_entity)
+      rescue Api::V1::IngredientsProcessor::ProcessingError => e
+        render_error(I18n.t("api.v1.recipes.errors.ingredients_processing", message: e.message), :unprocessable_entity)
       rescue StandardError => e
         Rails.logger.error "Unexpected error: #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
@@ -48,13 +52,14 @@ module Api
         }, status: :too_many_requests
       end
 
-      def ingredients
-        @ingredients ||= params[:ingredients]
+      def recipe_params
+        params.require(:ingredients)
+        { ingredients: Api::V1::IngredientsProcessor.perform(params[:ingredients]) }
       end
 
       def generate_recipe
-        json_content = Api::V1::RecipeGenerator.perform(ingredients)
-        recipe_attributes = Api::V1::RecipeParser.perform(json_content)
+        json_response = Api::V1::RecipeGenerator.perform(recipe_params[:ingredients])
+        recipe_attributes = Api::V1::RecipeParser.perform(json_response)
         Api::V1::RecipeCreator.perform(recipe_attributes)
       end
     end

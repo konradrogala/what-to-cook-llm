@@ -4,7 +4,6 @@ module Api
       include Performable
 
       class FeasibilityError < StandardError; end
-      class RateLimitError < StandardError; end
 
       def initialize(recipe_data)
         @recipe_data = recipe_data

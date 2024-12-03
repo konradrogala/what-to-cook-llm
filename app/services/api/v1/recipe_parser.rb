@@ -12,7 +12,6 @@ module Api
       def perform
         recipe_data = parse_json
         validate_recipe!(recipe_data)
-        check_feasibility!(recipe_data)
         extract_recipe_attributes(recipe_data)
       end
 
@@ -34,22 +33,11 @@ module Api
         raise ParsingError, "Invalid recipe format: #{e.message}"
       end
 
-      def check_feasibility!(recipe_data)
-        suggestions = Api::V1::RecipeFeasibilityChecker.perform(recipe_data)
-        if suggestions.any?
-          recipe_data["suggestions"] = suggestions
-        end
-      rescue Api::V1::RecipeFeasibilityChecker::FeasibilityError => e
-        Rails.logger.error "Recipe feasibility check failed: #{e.message}"
-        raise ParsingError, e.message
-      end
-
       def extract_recipe_attributes(recipe_data)
         {
           title: recipe_data["title"],
           ingredients: recipe_data["ingredients"],
-          instructions: recipe_data["instructions"],
-          suggestions: recipe_data["suggestions"]
+          instructions: recipe_data["instructions"]
         }
       end
     end

@@ -4,7 +4,6 @@ module Api
       include Performable
 
       class CreationError < StandardError; end
-      class ValidationError < StandardError; end
 
       def initialize(recipe_attributes)
         @recipe_attributes = recipe_attributes
@@ -28,7 +27,7 @@ module Api
 
       def validate_attributes!
         if recipe_attributes.blank? || !recipe_attributes.is_a?(Hash)
-          raise ValidationError, "Invalid recipe attributes"
+          raise CreationError, "Invalid recipe attributes"
         end
       end
 

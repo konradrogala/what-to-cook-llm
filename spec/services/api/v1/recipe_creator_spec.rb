@@ -40,16 +40,16 @@ RSpec.describe Api::V1::RecipeCreator do
     context "when attributes are invalid" do
       let(:invalid_attributes) { {} }
 
-      it "raises ValidationError" do
+      it "raises CreationError" do
         expect {
           described_class.perform(invalid_attributes)
-        }.to raise_error(Api::V1::RecipeCreator::ValidationError)
+        }.to raise_error(Api::V1::RecipeCreator::CreationError, "Invalid recipe attributes")
       end
 
       it "does not create a recipe" do
         expect {
           described_class.perform(invalid_attributes)
-        }.to raise_error(Api::V1::RecipeCreator::ValidationError)
+        }.to raise_error(Api::V1::RecipeCreator::CreationError)
         expect(Recipe.count).to eq(0)
       end
     end
