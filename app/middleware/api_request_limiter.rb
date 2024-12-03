@@ -7,38 +7,26 @@ class ApiRequestLimiter
   end
 
   def call(env)
-    # Skip middleware for non-API requests
     return @app.call(env) unless api_request?(env)
 
     request = Rack::Request.new(env)
     counter = Api::V1::RequestCounter.new(request.session)
-
-    Rails.logger.info "[MIDDLEWARE] Request path: #{request.path}"
-    Rails.logger.info "[MIDDLEWARE] Request method: #{request.request_method}"
-    Rails.logger.info "[MIDDLEWARE] Accept header: #{env['HTTP_ACCEPT']}"
-    Rails.logger.info "[MIDDLEWARE] Initial count: #{counter.current_count}"
-
     counter.reset_if_expired
 
-    # Call the app
     status, headers, response = @app.call(env)
 
-    # Check if the count has been incremented and now exceeds the limit
     if counter.limit_exceeded?
-      Rails.logger.warn "[MIDDLEWARE] Rate limit exceeded after request"
       ensure_reset_time(request.session)
 
-      # If the response was successful, modify it to include rate limit info
       if status == 201 || status == 200
         begin
-          # Handle different response body formats
           response_body = case response
           when Array
-                           response.first.to_s
+            response.first.to_s
           when Rack::BodyProxy
-                           response.each.to_a.join
+            response.each.to_a.join
           else
-                           response.to_s
+            response.to_s
           end
 
           body = JSON.parse(response_body)
@@ -46,16 +34,12 @@ class ApiRequestLimiter
           body["message"] = "You have reached the maximum number of requests for this session."
           body["remaining_requests"] = 0
 
-          # Create new response with modified body
           response = [ body.to_json ]
         rescue JSON::ParserError => e
           Rails.logger.error "[MIDDLEWARE] Failed to parse response body: #{e.message}"
         end
       end
     end
-
-    Rails.logger.info "[MIDDLEWARE] Response status: #{status}"
-    Rails.logger.info "[MIDDLEWARE] Final count: #{counter.current_count}"
 
     [ status, headers, response ]
   end
@@ -66,8 +50,6 @@ class ApiRequestLimiter
     path = env["REQUEST_PATH"] || env["PATH_INFO"]
     method = env["REQUEST_METHOD"]
     accept = env["HTTP_ACCEPT"]
-
-    Rails.logger.info "[MIDDLEWARE] Checking request: path=#{path}, method=#{method}, accept=#{accept}"
 
     path&.start_with?("/api/v1/recipes") &&
       method == "POST" &&
@@ -80,7 +62,7 @@ class ApiRequestLimiter
   end
 
   def rate_limit_response(reset_time)
-    minutes_until_reset = ((reset_time - Time.now.to_i) / 60.0).ceil
+    minutes_until_reset = [(reset_time - Time.now.to_i) / 60.0, 0].max.ceil
     [
       429,
       { "Content-Type" => "application/json" },

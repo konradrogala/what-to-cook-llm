@@ -15,22 +15,83 @@ RSpec.describe ApiRequestLimiter do
     }
   end
 
+  shared_examples 'rate limited response' do |response_type|
+    it "modifies the #{response_type} response to include limit info" do
+      _, _, modified_response = middleware.call(env)
+      body = JSON.parse(modified_response[0])
+
+      expect(body).to include(
+        'recipe' => 'test',
+        'limit_reached' => true,
+        'message' => 'You have reached the maximum number of requests for this session.',
+        'remaining_requests' => 0
+      )
+    end
+  end
+
   describe '#call' do
     context 'when request is not an API request' do
-      let(:env) { { 'REQUEST_PATH' => '/other/path', 'rack.session' => {} } }
+      context 'with different paths' do
+        ['other/path', 'api/v2/recipes', 'api/v1/other'].each do |path|
+          it "skips #{path} requests" do
+            env['REQUEST_PATH'] = "/#{path}"
+            status, _, _ = middleware.call(env)
+            expect(status).to eq(201)
+          end
+        end
+      end
 
-      it 'passes through to the app' do
-        status, headers, response = middleware.call(env)
-        expect(status).to eq(201)
+      context 'with different HTTP methods' do
+        ['GET', 'PUT', 'DELETE'].each do |method|
+          it "skips non-POST #{method} requests" do
+            env['REQUEST_METHOD'] = method
+            status, _, _ = middleware.call(env)
+            expect(status).to eq(201)
+          end
+        end
+      end
+
+      context 'with different Accept headers' do
+        ['text/html', 'application/xml', ''].each do |accept|
+          it "skips requests with #{accept.presence || 'empty'} Accept header" do
+            env['HTTP_ACCEPT'] = accept
+            status, _, _ = middleware.call(env)
+            expect(status).to eq(201)
+          end
+        end
       end
     end
 
     context 'when request is an API request' do
+      context 'with different request paths' do
+        ['?param=value', '/with/additional/path'].each do |path_suffix|
+          it "handles path #{path_suffix}" do
+            env['REQUEST_PATH'] = "/api/v1/recipes#{path_suffix}"
+            status, _, _ = middleware.call(env)
+            expect(status).to eq(201)
+          end
+        end
+      end
+
       context 'when limit is not exceeded' do
         it 'passes through to the app' do
           status, headers, response = middleware.call(env)
           expect(status).to eq(201)
           expect(JSON.parse(response[0])).to eq({ 'recipe' => 'test' })
+        end
+
+        it 'handles nil response' do
+          allow(app).to receive(:call).and_return([201, headers, nil])
+          status, _, response = middleware.call(env)
+          expect(status).to eq(201)
+          expect(response).to be_nil
+        end
+
+        it 'handles empty response' do
+          allow(app).to receive(:call).and_return([201, headers, []])
+          status, _, response = middleware.call(env)
+          expect(status).to eq(201)
+          expect(response).to eq([])
         end
       end
 
@@ -45,18 +106,7 @@ RSpec.describe ApiRequestLimiter do
 
           context 'with standard Array response' do
             let(:response) { [ { 'recipe' => 'test' }.to_json ] }
-
-            it 'modifies the response to include limit info' do
-              _, _, modified_response = middleware.call(env)
-              body = JSON.parse(modified_response[0])
-
-              expect(body).to include(
-                'recipe' => 'test',
-                'limit_reached' => true,
-                'message' => 'You have reached the maximum number of requests for this session.',
-                'remaining_requests' => 0
-              )
-            end
+            it_behaves_like 'rate limited response', 'Array'
           end
 
           context 'with Rack::BodyProxy response' do
@@ -64,18 +114,7 @@ RSpec.describe ApiRequestLimiter do
               body = [ { 'recipe' => 'test' }.to_json ]
               Rack::BodyProxy.new(body) { }
             end
-
-            it 'modifies the response to include limit info' do
-              _, _, modified_response = middleware.call(env)
-              body = JSON.parse(modified_response[0])
-
-              expect(body).to include(
-                'recipe' => 'test',
-                'limit_reached' => true,
-                'message' => 'You have reached the maximum number of requests for this session.',
-                'remaining_requests' => 0
-              )
-            end
+            it_behaves_like 'rate limited response', 'Rack::BodyProxy'
           end
         end
 
@@ -98,6 +137,20 @@ RSpec.describe ApiRequestLimiter do
           end
         end
       end
+
+      context 'when reset time handling' do
+        it 'sets reset time when not present' do
+          middleware.call(env)
+          expect(env['rack.session'][described_class::RESET_TIME_KEY]).to be_present
+        end
+
+        it 'does not modify existing reset time' do
+          existing_time = 1.hour.from_now.to_i
+          env['rack.session'][described_class::RESET_TIME_KEY] = existing_time
+          middleware.call(env)
+          expect(env['rack.session'][described_class::RESET_TIME_KEY]).to eq(existing_time)
+        end
+      end
     end
   end
 
@@ -115,6 +168,13 @@ RSpec.describe ApiRequestLimiter do
         'remaining_requests' => 0
       )
       expect(body['minutes_until_reset']).to be_between(59, 60)
+    end
+
+    it 'handles edge case when reset time is in the past' do
+      reset_time = Time.now.to_i - 3600 # 1 hour ago
+      _, _, response = middleware.send(:rate_limit_response, reset_time)
+      body = JSON.parse(response[0])
+      expect(body['minutes_until_reset']).to eq(0)
     end
   end
 end
