@@ -2,11 +2,12 @@ module Api
   module V1
     class RecipeGenerator
       include Performable
+      include ActionView::Helpers::SanitizeHelper
 
       class GenerationError < StandardError; end
 
       def initialize(ingredients)
-        @ingredients = ingredients
+        @ingredients = sanitize_ingredients(ingredients)
       end
 
       def perform
@@ -17,6 +18,19 @@ module Api
       private
 
       attr_reader :ingredients
+
+      def sanitize_ingredients(ingredients)
+        ingredients_array = case ingredients
+        when String
+          ingredients.split(",").map(&:strip)
+        when Array
+          ingredients.map(&:to_s).map(&:strip)
+        else
+          raise GenerationError, "Invalid ingredients format. Expected String or Array"
+        end
+
+        ingredients_array.map { |ingredient| sanitize(ingredient, tags: [], attributes: []) }
+      end
 
       def check_feasibility!
         client = OpenAI::Client.new
