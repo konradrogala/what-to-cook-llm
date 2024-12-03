@@ -26,6 +26,7 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
     end
 
     before do
+      allow_any_instance_of(Api::V1::IngredientsProcessor).to receive(:perform).and_return(valid_ingredients)
       allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform).and_return(valid_json_response)
       allow(Api::V1::RecipeParser).to receive(:perform).and_return(valid_recipe_attributes)
       allow(Api::V1::RecipeCreator).to receive(:perform).and_return(valid_recipe)
@@ -56,8 +57,8 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
     context "with invalid parameters" do
       it "returns error for empty ingredients" do
-        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Ingredients cannot be empty"))
+        allow_any_instance_of(Api::V1::IngredientsProcessor).to receive(:perform)
+          .and_raise(Api::V1::IngredientsProcessor::ProcessingError.new("Ingredients cannot be empty"))
 
         post :create, params: { ingredients: "" }
         expect(response).to have_http_status(:unprocessable_entity)
@@ -65,8 +66,8 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       end
 
       it "returns error for empty array" do
-        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Ingredients cannot be empty"))
+        allow_any_instance_of(Api::V1::IngredientsProcessor).to receive(:perform)
+          .and_raise(Api::V1::IngredientsProcessor::ProcessingError.new("Ingredients cannot be empty"))
 
         post :create, params: { ingredients: [] }
         expect(response).to have_http_status(:unprocessable_entity)
@@ -74,8 +75,8 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       end
 
       it "returns error for invalid input type" do
-        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Invalid ingredients format. Expected String or Array"))
+        allow_any_instance_of(Api::V1::IngredientsProcessor).to receive(:perform)
+          .and_raise(Api::V1::IngredientsProcessor::ProcessingError.new("Invalid ingredients format. Expected String or Array"))
 
         post :create, params: { ingredients: { name: "tomatoes" } }
         expect(response).to have_http_status(:unprocessable_entity)
@@ -83,9 +84,6 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
       end
 
       it "returns error for missing ingredients" do
-        allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(Api::V1::RecipeGenerator::GenerationError.new("Ingredients cannot be empty"))
-
         post :create, params: {}
         expect(response).to have_http_status(:unprocessable_entity)
         expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Ingredients cannot be empty"))
@@ -102,24 +100,6 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
         expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Generation failed"))
       end
 
-      it "handles RecipeParser errors" do
-        allow(Api::V1::RecipeParser).to receive(:perform)
-          .and_raise(Api::V1::RecipeParser::ParsingError, "Parsing failed")
-
-        post :create, params: { ingredients: valid_ingredients }
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_parsing", message: "Parsing failed"))
-      end
-
-      it "handles RecipeCreator errors" do
-        allow(Api::V1::RecipeCreator).to receive(:perform)
-          .and_raise(Api::V1::RecipeCreator::CreationError, "Creation failed")
-
-        post :create, params: { ingredients: valid_ingredients }
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.recipe_creation", message: "Creation failed"))
-      end
-
       it "handles OpenAI rate limit errors" do
         allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
           .and_raise(OpenAI::Error.new("rate limit exceeded"))
@@ -131,11 +111,11 @@ RSpec.describe Api::V1::RecipesController, type: :controller do
 
       it "handles other OpenAI errors" do
         allow_any_instance_of(Api::V1::RecipeGenerator).to receive(:perform)
-          .and_raise(OpenAI::Error.new("API error"))
+          .and_raise(OpenAI::Error.new("other error"))
 
         post :create, params: { ingredients: valid_ingredients }
         expect(response).to have_http_status(:service_unavailable)
-        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_error", message: "API error"))
+        expect(json_response["error"]).to eq(I18n.t("api.v1.recipes.errors.openai_error", message: "other error"))
       end
     end
   end

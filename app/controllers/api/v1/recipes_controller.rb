@@ -36,7 +36,9 @@ module Api
       rescue Api::V1::RecipeCreator::CreationError => e
         render_error(I18n.t("api.v1.recipes.errors.recipe_creation", message: e.message), :unprocessable_entity)
       rescue Api::V1::IngredientsProcessor::ProcessingError => e
-        render_error(I18n.t("api.v1.recipes.errors.ingredients_processing", message: e.message), :unprocessable_entity)
+        render_error(I18n.t("api.v1.recipes.errors.recipe_generation", message: e.message), :unprocessable_entity)
+      rescue ActionController::ParameterMissing => e
+        render_error(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Ingredients cannot be empty"), :unprocessable_entity)
       rescue StandardError => e
         Rails.logger.error "Unexpected error: #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
