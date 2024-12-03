@@ -5,7 +5,7 @@ module Api
 
       def create
         Rails.logger.info "Received parameters: #{params.inspect}"
-        
+
         counter = Api::V1::RequestCounter.new(session)
         counter.reset_if_expired
 
@@ -22,27 +22,6 @@ module Api
           limit_reached: is_limit_reached,
           message: is_limit_reached ? I18n.t("api.v1.recipes.messages.limit_reached") : nil
         }, status: :created
-
-      rescue OpenAI::Error => e
-        if e.message.include?("rate limit")
-          render_error(I18n.t("api.v1.recipes.errors.openai_rate_limit"), :too_many_requests)
-        else
-          render_error(I18n.t("api.v1.recipes.errors.openai_error", message: e.message), :service_unavailable)
-        end
-      rescue Api::V1::RecipeGenerator::GenerationError => e
-        render_error(I18n.t("api.v1.recipes.errors.recipe_generation", message: e.message), :unprocessable_entity)
-      rescue Api::V1::RecipeParser::ParsingError => e
-        render_error(I18n.t("api.v1.recipes.errors.recipe_parsing", message: e.message), :unprocessable_entity)
-      rescue Api::V1::RecipeCreator::CreationError => e
-        render_error(I18n.t("api.v1.recipes.errors.recipe_creation", message: e.message), :unprocessable_entity)
-      rescue Api::V1::IngredientsProcessor::ProcessingError => e
-        render_error(I18n.t("api.v1.recipes.errors.recipe_generation", message: e.message), :unprocessable_entity)
-      rescue ActionController::ParameterMissing => e
-        render_error(I18n.t("api.v1.recipes.errors.recipe_generation", message: "Ingredients cannot be empty"), :unprocessable_entity)
-      rescue StandardError => e
-        Rails.logger.error "Unexpected error: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
-        render_error(I18n.t("api.v1.recipes.errors.unexpected"), :internal_server_error)
       end
 
       private

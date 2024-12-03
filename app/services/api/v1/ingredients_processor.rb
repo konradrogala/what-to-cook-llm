@@ -11,10 +11,10 @@ module Api
 
       def perform
         Rails.logger.info "Processing ingredients: #{ingredients.inspect}"
-        
+
         processed = process_ingredients
         Rails.logger.info "Processed ingredients: #{processed.inspect}"
-        
+
         processed
       end
 
@@ -25,7 +25,7 @@ module Api
       def process_ingredients
         case ingredients
         when String
-          ingredients.split(',').map(&:strip)
+          ingredients.split(",").map(&:strip)
         when Array
           ingredients.map(&:to_s).map(&:strip)
         else
