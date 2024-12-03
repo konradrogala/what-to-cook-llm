@@ -17,28 +17,7 @@ class ApiRequestLimiter
 
     if counter.limit_exceeded?
       ensure_reset_time(request.session)
-
-      if status == 201 || status == 200
-        begin
-          response_body = case response
-          when Array
-            response.first.to_s
-          when Rack::BodyProxy
-            response.each.to_a.join
-          else
-            response.to_s
-          end
-
-          body = JSON.parse(response_body)
-          body["limit_reached"] = true
-          body["message"] = "You have reached the maximum number of requests for this session."
-          body["remaining_requests"] = 0
-
-          response = [ body.to_json ]
-        rescue JSON::ParserError => e
-          Rails.logger.error "[MIDDLEWARE] Failed to parse response body: #{e.message}"
-        end
-      end
+      response = modify_response(status, response) if success_response?(status)
     end
 
     [ status, headers, response ]
@@ -56,13 +35,46 @@ class ApiRequestLimiter
       accept&.include?("application/json")
   end
 
+  def success_response?(status)
+    [ 200, 201 ].include?(status)
+  end
+
+  def parse_response_body(response)
+    body_content = case response
+    when Array
+      response.first.to_s
+    when Rack::BodyProxy
+      response.each.to_a.join
+    else
+      response.to_s
+    end
+
+    JSON.parse(body_content)
+  rescue JSON::ParserError => e
+    Rails.logger.error "[MIDDLEWARE] Failed to parse response body: #{e.message}"
+    nil
+  end
+
+  def modify_response(status, response)
+    body = parse_response_body(response)
+    return response unless body
+
+    body.merge!(
+      "limit_reached" => true,
+      "message" => "You have reached the maximum number of requests for this session.",
+      "remaining_requests" => 0
+    )
+
+    [ body.to_json ]
+  end
+
   def ensure_reset_time(session)
     return if session[RESET_TIME_KEY]
     session[RESET_TIME_KEY] = 1.hour.from_now.to_i
   end
 
   def rate_limit_response(reset_time)
-    minutes_until_reset = [(reset_time - Time.now.to_i) / 60.0, 0].max.ceil
+    minutes_until_reset = [ (reset_time - Time.now.to_i) / 60.0, 0 ].max.ceil
     [
       429,
       { "Content-Type" => "application/json" },

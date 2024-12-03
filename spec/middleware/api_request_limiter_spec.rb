@@ -32,7 +32,7 @@ RSpec.describe ApiRequestLimiter do
   describe '#call' do
     context 'when request is not an API request' do
       context 'with different paths' do
-        ['other/path', 'api/v2/recipes', 'api/v1/other'].each do |path|
+        [ 'other/path', 'api/v2/recipes', 'api/v1/other' ].each do |path|
           it "skips #{path} requests" do
             env['REQUEST_PATH'] = "/#{path}"
             status, _, _ = middleware.call(env)
@@ -42,7 +42,7 @@ RSpec.describe ApiRequestLimiter do
       end
 
       context 'with different HTTP methods' do
-        ['GET', 'PUT', 'DELETE'].each do |method|
+        [ 'GET', 'PUT', 'DELETE' ].each do |method|
           it "skips non-POST #{method} requests" do
             env['REQUEST_METHOD'] = method
             status, _, _ = middleware.call(env)
@@ -52,7 +52,7 @@ RSpec.describe ApiRequestLimiter do
       end
 
       context 'with different Accept headers' do
-        ['text/html', 'application/xml', ''].each do |accept|
+        [ 'text/html', 'application/xml', '' ].each do |accept|
           it "skips requests with #{accept.presence || 'empty'} Accept header" do
             env['HTTP_ACCEPT'] = accept
             status, _, _ = middleware.call(env)
@@ -64,7 +64,7 @@ RSpec.describe ApiRequestLimiter do
 
     context 'when request is an API request' do
       context 'with different request paths' do
-        ['?param=value', '/with/additional/path'].each do |path_suffix|
+        [ '?param=value', '/with/additional/path' ].each do |path_suffix|
           it "handles path #{path_suffix}" do
             env['REQUEST_PATH'] = "/api/v1/recipes#{path_suffix}"
             status, _, _ = middleware.call(env)
@@ -81,14 +81,14 @@ RSpec.describe ApiRequestLimiter do
         end
 
         it 'handles nil response' do
-          allow(app).to receive(:call).and_return([201, headers, nil])
+          allow(app).to receive(:call).and_return([ 201, headers, nil ])
           status, _, response = middleware.call(env)
           expect(status).to eq(201)
           expect(response).to be_nil
         end
 
         it 'handles empty response' do
-          allow(app).to receive(:call).and_return([201, headers, []])
+          allow(app).to receive(:call).and_return([ 201, headers, [] ])
           status, _, response = middleware.call(env)
           expect(status).to eq(201)
           expect(response).to eq([])
